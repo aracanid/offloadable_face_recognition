@@ -1,4 +1,5 @@
-lego-mindstorms-ev3-raspberry-pi-cloud
-======================================
+Offloadable Face Recognition for RPi and Lego Mindstorms
+========================================================
 
-Lego Mindstorms EV3 and the Raspberry Pi Cloud @ the University of Glasgow
+A project to demostrate variable sized offloading using
+ROS, Raspberry Pi and Lego Mindstorms.

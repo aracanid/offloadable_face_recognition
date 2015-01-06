@@ -1,0 +1,4 @@
+uint64[] prev_features
+---
+uint64[] features
+int64 score

@@ -1,0 +1,5 @@
+uint64[] prev_features
+FaceBox track_box
+sensor_msgs/Image ros_image
+---
+uint64[] features
