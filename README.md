@@ -1,5 +1,5 @@
-Offloadable Face Recognition for RPi and Lego Mindstorms
-========================================================
+Offloadable Face Recognition
+============================
 
 A project to demostrate variable sized offloading using
 ROS, Raspberry Pi and Lego Mindstorms.
