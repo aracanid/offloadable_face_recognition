@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import roslib
 import rospy
 import cv
@@ -11,23 +13,10 @@ import time
 class Offloadable_FR_Node:
 	def __init__(self, node_name):
 		rospy.init_node(node_name)
-		
 		rospy.on_shutdown(self.cleanup)
-		
-		self.node_name = node_name
+
 		self.input_rgb_image = "input_rgb_image"
-		self.input_depth_image = "input_depth_image"
 		self.output_image = "output_image"
-		self.show_text = rospy.get_param("~show_text", True)
-		self.show_features = rospy.get_param("~show_features", True)
-
-		# Initialize the Region of Interest and its publisher 
-		self.ROI = RegionOfInterest()
-		self.pubROI = rospy.Publisher("/roi", RegionOfInterest)
-
-		# Do the same for the point cluster publisher 
-		self.cluster3d = PointStamped()
-		self.pub_cluster3d = rospy.Publisher("/target_point", PointStamped)
 		
 		# Initialize a number of global variables 
 		self.image = None
@@ -50,11 +39,6 @@ class Offloadable_FR_Node:
 		self.cps_n_values = 20
 		self.flip_image = False
 
-		# Create the display window 
-		self.cv_window_name = self.node_name
-		cv.NamedWindow(self.cv_window_name, cv.CV_NORMAL)
-		cv.ResizeWindow(self.cv_window_name, 640, 480)
-		
 		# Create the cv_bridge object 
 		self.bridge = CvBridge()
 
@@ -134,8 +118,8 @@ class Offloadable_FR_Node:
 
 	def convert_cv_to_img(self, cv_image):
 		try:
-			cv_image = self.bridge.cv2_to_imgmsg(cv_image, encoding="bgr8")
-			return cv_image
+			ros_image = self.bridge.cv2_to_imgmsg(cv_image, encoding="bgr8")
+			return ros_image
 		except CvBridgeError, e:
 		  print e
 		  
