@@ -1,14 +1,5 @@
-import roslib
-import rospy
-import cv
-import sys
-from std_msgs.msg import String
-from sensor_msgs.msg import Image, RegionOfInterest, CameraInfo
-from geometry_msgs.msg import PointStamped
+#!/usr/bin/env python
 from offloadable_face_recognition.msg import FaceBox
-from cv_bridge import CvBridge, CvBridgeError
-from offloadable_fr_node import Offloadable_FR_Node
-
 
 def add_features(request):
 
@@ -20,7 +11,7 @@ def add_features(request):
     # Look for any new features around the current feature cloud 
     
     # Create the ROI mask
-    roi = cv.CreateImage(image_size, 8, 1) 
+    roi = cv.CreateImage(cv.GetSize(grey), 8, 1) 
     
     # Begin with all black pixels 
     cv.Zero(roi)
@@ -76,3 +67,12 @@ def distance_to_cluster(self, test_point, cluster):
         if distance < min_distance:
             min_distance = distance
     return min_distance
+
+def main():
+    rospy.init_node('add_features_server')
+    s = rospy.Service('add_features', AddFeatures, add_features)
+    print "Service awaiting requests..."
+    rospy.spin()
+
+if __name__ == "__main__":
+    main()

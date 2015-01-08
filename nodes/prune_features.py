@@ -1,13 +1,4 @@
-import roslib
-import rospy
-import cv
-import sys
-from std_msgs.msg import String
-from sensor_msgs.msg import Image, RegionOfInterest, CameraInfo
-from geometry_msgs.msg import PointStamped
-from offloadable_face_recognition.msg import FaceBox
-from cv_bridge import CvBridge, CvBridgeError
-from offloadable_fr_node import Offloadable_FR_Node
+#!/usr/bin/env python
 
 def prune_features(request):
 
@@ -59,3 +50,12 @@ def prune_features(request):
 		score = 1
 
 	return offloadable_face_recognition.srv.PruneFeaturesResponse(features, score)
+
+def main():
+    rospy.init_node('prune_features_server')
+    s = rospy.Service('prune_features', PruneFeatures, prune_features)
+    print "Service awaiting requests..."
+    rospy.spin()
+
+if __name__ == "__main__":
+    main()
