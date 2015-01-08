@@ -1,78 +1,71 @@
 #!/usr/bin/env python
+
 import roslib
 import rospy
 import cv2
 import sys
-from sensor_msgs.msg import Image, CameraInfo
+import numpy as np
+
 from  offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
-import numpy as np
+from sensor_msgs.msg import Image
 
 class Image_Pre_Processing(Offloadable_FR_Node):
 
 	def __init__(self, node_name):
 
-		print "initialising pre_procesing_node"
+		print "Initialising " + node_name
+
 		Offloadable_FR_Node.__init__(self, node_name)
 
+		# Intemediary images
 		self.grey = None
-		self.image_size = None
-		self.image = None
 		self.pre_processed_image = None
+		self.marker_image = None
 		
-		# A publisher to output the processed image back to a ROS topic
-		self.pre_processed_image_pub = rospy.Publisher("pre_processed_image", Image, queue_size=self.queue_size) ###change
+		# A publisher to output the greyscale processed image
+		self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
 
 		# Wait until the image topics are ready before starting
 		rospy.wait_for_message(self.input_rgb_image, Image)
 
-		# Subscribe to the raw camera image topic and set the image processing callback
+		# Subscribe to the raw camera image topic and set the image processing callback to self.pre_processing()
 		image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
 
 	def pre_processing(self, ros_image):
 
-		# Convert the raw image to Opencv format using the convert_img_to_cv() helper function
-		cv_image_array = Offloadable_FR_Node.convert_img_to_cv(self, ros_image)
-		cv_image = cv2.cv.fromarray(cv_image_array)
-		
-		print "converted to cv2 image"
-		
-		# Create a few images we will use for display
-		if not self.image:
-			self.image_size = cv2.cv.GetSize(cv_image)
-			self.image = cv2.cv.CreateImage(self.image_size, 8, 3)
-			self.pre_processed_image = cv2.cv.CreateImage(self.image_size, 8, 3)
+		# Convert the ROS Image to Opencv format using the convert_img_to_cv() helper function
+		cv_image = self.convert_img_to_cv(ros_image)
 
-		if self.grey is None:
-			# Allocate temporary images     
-			self.grey = cv2.cv.CreateImage(self.image_size, 8, 1)
+		if self.pre_processed_image is None:
+			self.pre_processed_image = np.zeros(cv_image.shape, np.uint8)
 
-		# Convert color input image to grayscale 
-		self.grey = cv2.cvtColor(cv_image_array, cv2.COLOR_BGR2GRAY)
+		# Create a single channel greyscale image
+		if self.grey is None:  
+			(im_width, im_height, im_depth) = cv_image.shape
+			self.grey = np.zeros((im_width,im_height,1), np.uint8)
 
-		# Equalize the histogram to reduce lighting effects. 
+		# Convert input image from color to greyscale
+		self.grey = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+
+		# Equalize the histogram to reduce lighting effects 
 		self.grey = cv2.equalizeHist(self.grey, self.grey)
-		
-		Offloadable_FR_Node.convert_cv_to_img(self, self.grey)
 
-		print "before sending"
-		# Publish the display image back to ROS 
+		# Convert back to ROS Image from Opencv formatf
+		pre_processed_image = self.convert_cv_to_img(self.grey)
+
 		try:
 			self.pre_processed_image_pub.publish(pre_processed_image)
-			print "image sent"
 		except CvBridgeError, e:
 			print e
 
 def main(args):
 	try:   
-		# Fire up the node.
 		PP = Image_Pre_Processing("ev3_image_pre_processing")
-		print "starting pre_processing_node"
-		# Spin so our services will work
+		print "Node started..."
 		rospy.spin()
-	except KeyboardInterrupt:
-		print "Shutting down vision node."
-		cv2.DestroyAllWindows()
+	except e:
+		print "ERROR: could not start node \n" + e
 
 if __name__ == '__main__':
 	main(sys.argv)
