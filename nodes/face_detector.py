@@ -1,115 +1,142 @@
+#!/usr/bin/env python
 
 import roslib
 import rospy
-import cv
+import cv2
 import sys
-from sensor_msgs.msg import RegionOfInterest, Image
-from math import sqrt, isnan
-from ros2opencv import ROS2OpenCV
-from pi_face_tracker.srv import *
+import numpy as np
+
 from offloadable_fr_node import Offloadable_FR_Node
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image
 from offloadable_face_recognition.msg import FaceBox
 
-
-class EV3_Face_Detector(Offloadable_FR_Node):
+class Face_Detector(Offloadable_FR_Node):
 
 	def __init__(self, node_name):
 
-		self.cv_image = None
-		self.small_image = None
-		self.min_size = (20, 20)
-		self.image_scale = 2
-		self.haar_scale = 1.5
-		self.min_neighbors = 1
-		self.haar_flags = cv.CV_HAAR_DO_CANNY_PRUNING
+		print "Initialising " + node_name
 
+		Offloadable_FR_Node.__init__(self, node_name)
+
+		# Haar cascade constants
+		self.MIN_SIZE = (20, 20)
+		self.IMAGE_SCALE = 2
+		self.HAAR_SCALE = 1.5
+		self.MIN_NEIGHBORS = 1
+		self.HAAR_FLAGS = cv2.cv.CV_HAAR_DO_CANNY_PRUNING
+
+		# Harr cascade classifiers
 		self.cascade_frontal_alt = rospy.get_param("~cascade_frontal_alt", "")
 		self.cascade_frontal_alt2 = rospy.get_param("~cascade_frontal_alt2", "")
 		self.cascade_profile = rospy.get_param("~cascade_profile", "")
 		
-		self.cascade_frontal_alt = cv.Load(self.cascade_frontal_alt)
-		self.cascade_frontal_alt2 = cv.Load(self.cascade_frontal_alt2)
-		self.cascade_profile = cv.Load(self.cascade_profile)
+		self.cascade_frontal_alt = cv2.CascadeClassifier(self.cascade_frontal_alt)
+		self.cascade_frontal_alt2 = cv2.CascadeClassifier(self.cascade_frontal_alt2)
+		self.cascade_profile = cv2.CascadeClassifier(self.cascade_profile)
 
-		self.face_box = FaceBox()
+		# Intemediary images
+		self.small_image = None
 
-    	# A publisher to output the display image back to a ROS topic 
-		output_face_box_pub = rospy.Publisher("face_box_coordinates", FaceBox)  ###need to change this so that it sends an array
+		# A publisher to output face coordinates and size 
+		self.output_face_box_pub = rospy.Publisher(self.face_box_coordinates, FaceBox, queue_size=self.queue_size)  ###need to change this so that it sends an array
 
-		# A publisher to output the display image back to a ROS topic 
-		output_image_pub = rospy.Publisher("face_detect_output_image", Image)  ###need to change this so that it sends an array
+		# # A publisher to output the image used for marker information on top of the output image
+		# self.marker_image_pub = rospy.Publisher(self.marker_image_output, Image, queue_size=self.queue_size)
 
-		# Subscribe to the raw camera image topic and set the image processing callback 
-		image_sub = rospy.Subscriber("pre_processed_image", Image, detect_face, self.queue_size)
+		# A publisher to output the final image and display it
+		self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)  ###need to change this so that it sends an array
 
-	def detect_face(ros_image):
+		# A publisher to output the frame in which the face was detected
+		self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
 
-		self.cv_image = convert_img_to_cv(ros_image)
+		# Wait until the image topics are ready before starting
+		rospy.wait_for_message(self.pre_processed_output_image, Image)
 
+		# Subscribe to the preprocessed image output and set the detect_face as the callback
+		image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
+
+	def detect_face(self, ros_image):
+
+		# Convert the ROS Image to Opencv format using the convert_img_to_cv() helper function
+		cv_image = self.convert_img_to_cv(ros_image)
+
+		im_width, im_height = cv_image.shape
+
+		# Create a single scaled down image
 		if self.small_image is None:
-            self.small_image = cv.CreateImage((cv.Round(self.image_size[0] / self.image_scale),
-                       cv.Round(self.image_size[1] / self.image_scale)), 8, 1)
+			self.small_image = np.zeros((im_width/self.IMAGE_SCALE, im_height/self.IMAGE_SCALE, 1), np.uint8)
+			# self.marker_image = np.zeros((im_width, im_height, 3), np.uint8)
 
-		# Scale input image for faster processing 
-		cv.Resize(cv_image, self.small_image, cv.CV_INTER_LINEAR)
-	
+		# Scale input image for faster processing using the scaled image
+		self.small_image = cv2.resize(cv_image, (im_width, im_height), interpolation=cv2.INTER_LINEAR)
+		
 		# First check one of the frontal templates 
 		if self.cascade_frontal_alt:
-			faces = cv.HaarDetectObjects(self.small_image, self.cascade_frontal_alt, cv.CreateMemStorage(0),
-										  self.haar_scale, self.min_neighbors, self.haar_flags, self.min_size)
-										 
-		# If that fails, check the profile template 
-		if not faces:
+			faces = self.haar_detector(self.cascade_frontal_alt)
+		
+		# If a face is not found, try the profile template
+		if len(faces) is 0:
 			if self.cascade_profile:
-				faces = cv.HaarDetectObjects(self.small_image, self.cascade_profile, cv.CreateMemStorage(0),
-											 self.haar_scale, self.min_neighbors, self.haar_flags, self.min_size)
-
-			if not faces:
+				faces = self.haar_detector(self.cascade_profile)
+			if len(faces) is 0:
 				# If that fails, check a different frontal profile 
 				if self.cascade_frontal_alt2:
-					faces = cv.HaarDetectObjects(self.small_image, self.cascade_frontal_alt2, cv.CreateMemStorage(0),
-										 self.haar_scale, self.min_neighbors, self.haar_flags, self.min_size)
-			
-		if not faces:
-			hscale = 0.4 * self.image_size[0] / 160. + 0.1
-			vscale = 0.4 * self.image_size[1] / 120. + 0.1
-			text_font = cv.InitFont(cv.CV_FONT_VECTOR0, hscale, vscale, 0, 1, 8)
-			cv.PutText(self.marker_image, "NO FACE DETECTED!", (50, int(self.image_size[1] * 0.9)), text_font, cv.RGB(255, 255, 0))
-			
-			return None
-				
-		for ((x, y, w, h), n) in faces:
-			# The input to cv.HaarDetectObjects was resized, so scale the bounding box of each face and convert it to two CvPoints 
-			pt1 = (int(x * self.image_scale), int(y * self.image_scale))
-			pt2 = (int((x + w) * self.image_scale), int((y + h) * self.image_scale))
-			face_width = pt2[0] - pt1[0]
-			face_height = pt2[1] - pt1[1]
+					faces = self.haar_detector(self.cascade_frontal_alt2)
 
-			self.face_box.point0 = pt1[0]
-			self.face_box.point1 = pt1[1]
-			self.face_box.width = face_width
-			self.face_box.height = face_height
+		# If we have found faces, generate a FaceBox message from them
+		face_box = self.generate_face_box(faces)
 
-			# Break out of the loop after the first face 
-			try:
-				self.output_image_pub.publish(convert_cv_to_img(self.pre_processed_image))
-				self.output_face_box_pub.publish(self.face_box)
-			except CvBridgeError, e:
-				print e
+		try:
+			if face_box is None:
+				cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
+				self.output_image_pub.publish(self.convert_cv_to_img(cv_image, encoding="bgr8"))
+			else:
+				pt1 = (face_box.x, face_box.y)
+				pt2 = (face_box.x+face_box.width, face_box.y+face_box.height)
 
-	def main(args):
-		try:   
-			# Fire up the node.
-			FD = EV3_Face_Detector("ev3_face_detector")
-			# Spin so our services will work
-			rospy.spin()
-		except KeyboardInterrupt:
-			print "Shutting down vision node."
-			cv.DestroyAllWindows()
+				cv2.rectangle(cv_image, pt1, pt2, (255,0,0), thickness=4)
 
-	if __name__ == '__main__':
-		# Create the cv_bridge object 
+				self.output_face_box_pub.publish(face_box)
+				self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
 
-		rospy.loginfo("Starting " + node_name)
+		except CvBridgeError, e:
+			print e
 
-		main(sys.argv)
+	# Fuction to generate a list of face objects when given a classifier template
+	def haar_detector(self, classifier):
+		return classifier.detectMultiScale(self.small_image, self.HAAR_SCALE, self.MIN_NEIGHBORS, self.HAAR_FLAGS, self.MIN_SIZE)
+
+	# Function to generate a FaceBox message type from a list of possible face objects
+	def generate_face_box(self, faces):
+		if len(faces) > 0:
+			for (x, y, w, h) in faces:
+				face_box = FaceBox()
+
+				# The input to cv.HaarDetectObjects was resized, so scale the bounding box of each face and convert it to two CvPoints 
+				pt1 = (int(x * self.IMAGE_SCALE), int(y * self.IMAGE_SCALE))
+				pt2 = (int((x + w) * self.IMAGE_SCALE), int((y + h) * self.IMAGE_SCALE))
+				face_width = pt2[0] - pt1[0]
+				face_height = pt2[1] - pt1[1]
+
+				face_box.x = pt1[0]
+				face_box.y = pt1[1]
+				face_box.width = face_width
+				face_box.height = face_height
+
+				return face_box
+		return None
+
+def main(args):
+	try:   
+		# Fire up the node.
+		FD = Face_Detector("ev3_face_detector")
+		# Spin so our services will work
+		rospy.spin()
+	except KeyboardInterrupt:
+		print "Shutting down vision node."
+		cv.DestroyAllWindows()
+
+if __name__ == '__main__':
+
+	main(sys.argv)

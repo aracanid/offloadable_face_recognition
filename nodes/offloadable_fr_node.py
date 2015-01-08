@@ -16,7 +16,13 @@ class Offloadable_FR_Node:
 		rospy.on_shutdown(self.cleanup)
 
 		self.input_rgb_image = "input_rgb_image"
+		self.pre_processed_output_image = "pre_processed_image"
+		self.face_detect_output_image = "face_detect_output_image"
+		self.face_box_coordinates = "face_box_coordinates"
+		self.marker_image_output = "marker_image_output"
 		self.output_image = "output_image"
+
+		self.rate = rospy.Rate(1) #Hz
 		
 		# Initialize a number of global variables 
 		self.image = None
@@ -109,16 +115,16 @@ class Offloadable_FR_Node:
 
 		self.queue_size = 1
 
-	def convert_img_to_cv(self, ros_image):
+	def convert_img_to_cv(self, ros_image, encoding="passthrough"):
 		try:
-			cv_image = self.bridge.imgmsg_to_cv2(ros_image, desired_encoding="bgr8")
+			cv_image = self.bridge.imgmsg_to_cv2(ros_image, desired_encoding=encoding)
 			return cv_image
 		except CvBridgeError, e:
 		  print e
 
-	def convert_cv_to_img(self, cv_image):
+	def convert_cv_to_img(self, cv_image, encoding="passthrough"):
 		try:
-			ros_image = self.bridge.cv2_to_imgmsg(cv_image, encoding="bgr8")
+			ros_image = self.bridge.cv2_to_imgmsg(cv_image, encoding=encoding)
 			return ros_image
 		except CvBridgeError, e:
 		  print e
