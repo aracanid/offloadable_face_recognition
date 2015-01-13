@@ -53,10 +53,12 @@ find_package(
 add_message_files(
 	FILES
 	FaceBox.msg
+	FeatureCoordinates.msg
 )
 
 ## Generate services in the 'srv' folder
 add_service_files(
+	DIRECTORY srv
 	FILES
 	AddFeatures.srv
 	PruneFeatures.srv
