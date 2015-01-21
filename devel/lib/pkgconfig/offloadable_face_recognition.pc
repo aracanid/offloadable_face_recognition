@@ -1,0 +1,8 @@
+prefix=/home/justin/catkin_ws/src/offloadable_face_recognition/devel
+
+Name: offloadable_face_recognition
+Description: Description of offloadable_face_recognition
+Version: 0.0.0
+Cflags: -I/home/justin/catkin_ws/src/offloadable_face_recognition/devel/include
+Libs: -L/home/justin/catkin_ws/src/offloadable_face_recognition/devel/lib 
+Requires: message_runtime rospy roscpp std_msgs sensor_msgs cv_bridge image_transport

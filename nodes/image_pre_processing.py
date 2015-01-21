@@ -27,10 +27,12 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
 
 		# Wait until the image topics are ready before starting
-		rospy.wait_for_message(self.input_rgb_image, Image)
+		#rospy.wait_for_message(self.input_rgb_image, Image)
 
 		# Subscribe to the raw camera image topic and set the image processing callback to self.pre_processing()
 		image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
+
+		self.r = rospy.Rate(10)
 
 	def pre_processing(self, ros_image):
 
@@ -59,12 +61,13 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		except CvBridgeError, e:
 			print e
 
+
 def main(args):
 	try:   
 		PP = Image_Pre_Processing("ev3_image_pre_processing")
 		print "Node started..."
 		rospy.spin()
-	except e:
+	except KeyboardInterrupt:
 		print "ERROR: could not start node \n" + e
 
 if __name__ == '__main__':

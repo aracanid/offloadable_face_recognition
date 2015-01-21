@@ -1,4 +1,4 @@
-uint32[] prev_features
+FeatureCoordinates[] prev_features
 ---
-uint32[] features
+FeatureCoordinates[] features
 int32 score

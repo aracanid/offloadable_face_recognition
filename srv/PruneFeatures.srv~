@@ -1,0 +1,4 @@
+tuple[] prev_features
+---
+tuple[] features
+int32 score

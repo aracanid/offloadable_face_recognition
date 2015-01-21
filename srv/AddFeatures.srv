@@ -1,4 +1,4 @@
-uint32[] prev_features
+FeatureCoordinates[] prev_features
 FaceBox track_box
 sensor_msgs/Image ros_image
 ---

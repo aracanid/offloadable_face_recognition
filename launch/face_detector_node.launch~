@@ -3,6 +3,8 @@
 
   <node pkg="offloadable_face_recognition" name="face_detector" type="face_detector.py" output="screen">
     <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
+    <remap from="face_detect_ouput_image"
+<remap from="pre_processed_image" to="/image_pre_processing/pre_processed_image1" />
     
     <param name="auto_face_tracking" value="$(arg auto_face_tracking)" />
     
@@ -28,7 +30,7 @@
       surf_hessian_quality: 100
     </rosparam>
     
-  	<<param name="cascade_frontal_alt" value="$(find offloadable_face_recognition)/params/haarcascade_frontalface_alt.xml" />
+  	<param name="cascade_frontal_alt" value="$(find offloadable_face_recognition)/params/haarcascade_frontalface_alt.xml" />
    	<param name="cascade_frontal_alt2" value="$(find offloadable_face_recognition)/params/haarcascade_frontalface_alt2.xml" />
   	<param name="cascade_profile" value="$(find offloadable_face_recognition)/params/haarcascade_profileface.xml" />
 

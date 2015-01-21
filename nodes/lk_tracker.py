@@ -11,12 +11,15 @@ from offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from offloadable_face_recognition.msg import FaceBox
+from offloadable_face_recognition.srv import *
 
 class LK_Tracker(Offloadable_FR_Node):
 
     def __init__(self, node_name):
 
         Offloadable_FR_Node.__init__(self, node_name)
+
+        print "Initialising lk_tracker node"
 
         self.pyramid = None
         self.prev_pyramid = None
@@ -25,29 +28,28 @@ class LK_Tracker(Offloadable_FR_Node):
         face_box = None
         self.features = []
         self.night_mode = False       
-        self.QUALITY = 0.01
         self.WIN_SIZE = 10
-        self.MAX_COUNT = 200
-        self.BLOCK_SIZE = 3
         self.USE_HARRIS = False
         self.FLAGS = 0
         self.MAX_LEVEL = 2
-        self.GOOD_FEATURE_DISTANCE = 5
+        self.CV_FILLED = -1
 
         self.NO_IMAGE_TEXT = "NO FACE DETECTED!"
-        self.lock = threading.Lock()
+        self.face_box_lock = threading.Lock()
+        self.subscriber_lock = threading.Lock()
         self.face_box = None
+        self.feature_matrix = None
+        self.marker_image = None
 
-        # params for ShiTomasi corner detection
-        feature_params = dict( maxCorners = self.MAX_COUNT,
-                               qualityLevel = self.QUALITY,
-                               minDistance = self.GOOD_FEATURE_DISTANCE,
-                               blockSize = self.BLOCK_SIZE,
-                               useHarris = self.USE_HARRIS,
-                               k = 0.04)
+        # # params for ShiTomasi corner detection
+        # self.feature_params = dict( maxCorners = self.MAX_COUNT,
+        #                        qualityLevel = self.QUALITY,
+        #                        minDistance = self.GOOD_FEATURE_DISTANCE,
+        #                        blockSize = self.BLOCK_SIZE,
+        #                        k = 0.04)
 
         # Parameters for lucas kanade optical flow
-        lk_params = dict( winSize  = (self.WIN_SIZE,self.WIN_SIZE),
+        self.lk_params = dict( winSize  = (self.WIN_SIZE,self.WIN_SIZE),
                           maxLevel = self.MAX_LEVEL,
                           criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 
@@ -55,50 +57,58 @@ class LK_Tracker(Offloadable_FR_Node):
         # A publisher to output the display image back to a ROS topic 
         self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
 
+        self.marker_image_pub = rospy.Publisher("marker_image", Image, queue_size=self.queue_size)
+
         # Subscribe to the raw camera image topic and set the image processing callback 
         self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
         self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
+
+        # Subscribe to the raw camera image topic and set the image processing callback to self.pre_processing()
+        #image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
         # Subscribe to the preprocessed image output and set the detect_face as the callback
         #image_sub = rospy.Subscriber(self.marker_image_output, Image, self.update_marker_image, queue_size=self.queue_size)
 
     def update_face_box(self, face_box):
-        with self.lock:
+        with self.face_box_lock:
             self.face_box = face_box
+            print "faceBox updated"
 
     def track_lk(self, ros_image):
 
         cv_image = self.convert_img_to_cv(ros_image)
         im_width, im_height = cv_image.shape
 
-        if self.face_box_sub is None:
-            print "before lock"
-            with self.lock:
-                face_box = self.face_box
-            print "after lock"
-        else:
-            face_box = None
+        with self.face_box_lock:
+            face_box = self.face_box
+        print "after lock"
 
         print "before subscriber changing"
         # Switch between the incoming image streams depending on whether we have features or not
         if len(self.features) > 0:
-            self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, self.queue_size)
-            self.face_box_sub = None
-            print "switched topic to tracking only"
+            with self.subscriber_lock:
+                self.image_sub.unregister()
+                self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
+                self.face_box_sub = None
+                print "switched topic to tracking only"
 
         elif self.face_box_sub is None and len(self.features) is 0:
-            self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, self.queue_size)
-            self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.track_lk, self.queue_size)
+            with self.subscriber_lock:
+                self.image_sub.unregister()
+                self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
+                self.image_sub.unregister()
+                self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 
-            text_scale = 0.4 * im_width / 160. + 0.1
-            text_pos = (100, im_height-100)
-            cv2.putText(self.marker_image, self.NO_IMAGE_TEXT, text_pos, cv2.FONT_HERSHEY_COMPLEX, text_scale, (255,0,0), thickness=4)
-            print "switched topic back to face detector"
+                text_scale = 0.4 * im_width / 160. + 0.1
+                text_pos = (100, im_height-100)
+                cv2.putText(self.marker_image, self.NO_IMAGE_TEXT, text_pos, cv2.FONT_HERSHEY_COMPLEX, text_scale, (255,0,0), thickness=4)
+                print "switched topic back to face detector"
         feature_box = None
         
         #  Initialize intermediate images if necessary 
-        if not self.pyramid:
+        if self.grey is None:
             self.grey = np.zeros((im_width,im_height,1), np.uint8)
             self.prev_grey = np.zeros((im_width,im_height,1), np.uint8)
+            self.marker_image= np.zeros((im_width,im_height,3), np.uint8)
             self.features = []
         
 
@@ -106,37 +116,35 @@ class LK_Tracker(Offloadable_FR_Node):
 
         print "before opt flow"
             
-        if face_box and self.features != []:
+        if face_box and len(self.features) > 0:
+
+            print "have features lets track"
             #  We have feature points, so track and display them 
 
             #  Calculate the optical flow 
-
-            self.features, status, track_error = cv2.calcOpticalFlowPyrLK(self.prev_grey, self.grey, self.features, None, **lk_params)
+            self.features, status, track_error = cv2.calcOpticalFlowPyrLK(self.prev_grey, self.grey, np.asarray(self.features,dtype="float32"), None, **self.lk_params)
 
             #  Keep only high status points 
             self.features = [ p for (st,p) in zip(status, self.features) if st]  
         
 
-        elif face_box and self.is_rect_nonzero(face_box):
-            print "before good features"
-            #  Get the initial features to track 
-                    
-            #  Create a mask image to be used to select the tracked points 
-            mask = np.zeros((im_width,im_height,1), np.uint8)
-            
-            # Get the center of the track box (type CvRect) so we can create the equivalent CvBox2D (rotated rectangle) required by EllipseBox below. 
-            center_x = int(face_box.x + face_box.width / 2)
-            center_y = int(face_box.y + face_box.height / 2)
-            roi_box = ((center_x, center_y), (face_box.width, face_box.height), 0)
-            
-            # Create a filled white ellipse within the track_box to define the ROI. 
-            cv.EllipseBox(mask, roi_box, cv.CV_RGB(255,255, 255), cv.CV_FILLED)      
-            
-            # Create the temporary scratchpad images 
-            eig = np.zeros((im_width,im_height,1), np.uint32)
-            temp = np.zeros((im_width,im_height,1), np.uint32)
+        elif face_box:
 
-            self.features = cv2.goodFeaturesToTrack(self.grey, mask=mask, **feature_params)
+            pt1 = (face_box.x, face_box.y)
+            pt2 = (face_box.x+face_box.width, face_box.y+face_box.height)
+            cv2.rectangle(cv_image, pt1, pt2, (255,0,0), thickness=4)
+
+            print "before add service"
+            rospy.wait_for_service('add_features')
+
+            add_features = rospy.ServiceProxy('add_features', AddFeatures)
+            try:
+                print str(self.features)
+                service_response = add_features(self.features, face_box, ros_image)
+                self.features = self.convert_to_tuple_array(service_response.features)
+            except rospy.ServiceException as exc:
+                print("Service did not process request: " + str(exc))            #  Get the initial features to track 
+                    
             
             # Since the detect box is larger than the actual face or desired patch, shrink the number of features by 10% 
             self.min_features = int(len(self.features) * 0.9)
@@ -151,15 +159,17 @@ class LK_Tracker(Offloadable_FR_Node):
             print "we have features"
             # The FitEllipse2 function below requires us to convert the feature array into a CvMat matrix 
             try:
-                self.feature_matrix = np.zeros((1,len(self.features,1),cv2.CV_32SC2))
+                self.feature_matrix = np.float32([p for p in self.features]).reshape(-1, 1, 2)  
             except:
                 pass
                         
             # Draw the points as green circles and add them to the features matrix 
             i = 0
+
             for the_point in self.features:
-                if self.show_features:
-                    cv2.circle(self.marker_image, (int(the_point[0]), int(the_point[1])), 2, (0, 255, 0, 0), cv.CV_FILLED, 8, 0)
+                print the_point[0]
+                print str(the_point[1]) + "BB"
+                cv2.circle(self.marker_image, (int(the_point[0]), int(the_point[1])), 3,(0,255,0),self.CV_FILLED)
                 try:
                     self.feature_matrix[0][i] = (int(the_point[0]), int(the_point[1]))
                 except:
@@ -173,11 +183,12 @@ class LK_Tracker(Offloadable_FR_Node):
                 feature_box = None
 
             # Prune features that are too far from the main cluster
+            print "before prune features"
             rospy.wait_for_service('prune_features')
             prune_features = rospy.ServiceProxy('prune_features', PruneFeatures)
 
             try:
-                (self.features, score) = PruneFeatures(self.features)
+                (self.features, score) = prune_features(self.features)
             except rospy.ServiceException as exc:
                 print("Service did not process request: " + str(exc))
             
@@ -185,8 +196,9 @@ class LK_Tracker(Offloadable_FR_Node):
                 self.detect_box = None
                 face_box = None
             
-
-            self.pre_processed_image = ns.concatenate(self.marker_image,cv2.cvtColor(self.pre_processed_image, cv2.COLOR_GRAY2BGR))
+            print "processing image"
+            self.marker_image_pub.publish(self.marker_image)
+            self.pre_processed_image = np.concatenate(self.marker_image,cv2.cvtColor(self.pre_processed_image, cv2.COLOR_GRAY2BGR))
             ros_image = convert_cv_to_img(self.pre_processed_image)
 
             # Add features if the number is getting too low
@@ -195,11 +207,13 @@ class LK_Tracker(Offloadable_FR_Node):
 
                 ((face_box.x, face_box.y), (face_box.width, face_box.height), a) = self.feature_box
                 
+                print "before add service"
                 rospy.wait_for_service('add_features')
-                prune_features = rospy.ServiceProxy('add_features', AddFeatures)
 
+                add_features = rospy.ServiceProxy('add_features', AddFeatures)
                 try:
-                    self.features = AddFeatures(self.features, face_box, ros_image)
+                    service_response = add_features(self.features, face_box, ros_image)
+                    self.features = list(service_response.features)
                 except rospy.ServiceException as exc:
                     print("Service did not process request: " + str(exc))
             else:
@@ -216,6 +230,7 @@ def main(args):
         # Fire up the node.
         LK = LK_Tracker("ev3_lk_tracker")
         # Spin so our services will work
+        print "Node started..."
         rospy.spin()
     except KeyboardInterrupt:
         print "Shutting down vision node."

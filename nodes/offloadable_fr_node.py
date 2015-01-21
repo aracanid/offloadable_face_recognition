@@ -7,6 +7,7 @@ import sys
 from std_msgs.msg import String
 from sensor_msgs.msg import Image, RegionOfInterest, CameraInfo
 from geometry_msgs.msg import PointStamped
+from offloadable_face_recognition.msg import *
 from cv_bridge import CvBridge, CvBridgeError
 import time
 
@@ -81,14 +82,6 @@ class Offloadable_FR_Node:
 		self.pyramid = None
 		self.small_image = None
 		
-		# Set up the face detection parameters 
-		self.cascade_frontal_alt = rospy.get_param("~cascade_frontal_alt", "")
-		self.cascade_frontal_alt2 = rospy.get_param("~cascade_frontal_alt2", "")
-		self.cascade_profile = rospy.get_param("~cascade_profile", "")
-		
-		self.cascade_frontal_alt = cv.Load(self.cascade_frontal_alt)
-		self.cascade_frontal_alt2 = cv.Load(self.cascade_frontal_alt2)
-		self.cascade_profile = cv.Load(self.cascade_profile)
 
 		self.min_size = (20, 20)
 		self.image_scale = 2
@@ -128,7 +121,27 @@ class Offloadable_FR_Node:
 			return ros_image
 		except CvBridgeError, e:
 		  print e
-		  
+
+	def convert_to_feature_coordinates(self, features):
+		converted_array = []
+		
+		for coordinates in features:
+			fc = FeatureCoordinates()
+			fc.coordinates = coordinates
+			converted_array.append(fc)
+
+		return converted_array
+
+	def convert_to_tuple_array(self, feature_coordinates):
+		converted_array = []
+		fc_array = list(feature_coordinates)
+
+		for fc in fc_array:
+			tuple_coordinates = tuple(fc.coordinates)
+			converted_array.append(tuple_coordinates)
+
+		return converted_array
+
 	def is_rect_nonzero(self, r):
 		# First assume a simple CvRect type
 		try:

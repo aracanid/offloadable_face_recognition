@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/justin/catkin_ws/src/offloadable_face_recognition/devel/setup.sh

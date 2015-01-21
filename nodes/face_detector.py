@@ -50,9 +50,6 @@ class Face_Detector(Offloadable_FR_Node):
 		# A publisher to output the frame in which the face was detected
 		self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
 
-		# Wait until the image topics are ready before starting
-		rospy.wait_for_message(self.pre_processed_output_image, Image)
-
 		# Subscribe to the preprocessed image output and set the detect_face as the callback
 		image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
 
@@ -69,7 +66,7 @@ class Face_Detector(Offloadable_FR_Node):
 			# self.marker_image = np.zeros((im_width, im_height, 3), np.uint8)
 
 		# Scale input image for faster processing using the scaled image
-		self.small_image = cv2.resize(cv_image, (im_width, im_height), interpolation=cv2.INTER_LINEAR)
+		self.small_image = cv2.resize(cv_image, (im_width/self.IMAGE_SCALE, im_height/self.IMAGE_SCALE), interpolation=cv2.INTER_LINEAR)
 		
 		# First check one of the frontal templates 
 		if self.cascade_frontal_alt:
@@ -89,14 +86,11 @@ class Face_Detector(Offloadable_FR_Node):
 
 		try:
 			if face_box is None:
+				print "noface"
 				cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
 				self.output_image_pub.publish(self.convert_cv_to_img(cv_image, encoding="bgr8"))
 			else:
-				pt1 = (face_box.x, face_box.y)
-				pt2 = (face_box.x+face_box.width, face_box.y+face_box.height)
-
-				cv2.rectangle(cv_image, pt1, pt2, (255,0,0), thickness=4)
-
+				print "face"
 				self.output_face_box_pub.publish(face_box)
 				self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
 

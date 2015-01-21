@@ -1,1 +1,1 @@
-float32[] coordinates
+uint32[2] coordinates

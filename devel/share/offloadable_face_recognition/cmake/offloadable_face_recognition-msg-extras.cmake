@@ -1,0 +1,2 @@
+set(offloadable_face_recognition_MESSAGE_FILES "/home/justin/catkin_ws/src/offloadable_face_recognition/msg/FaceBox.msg;/home/justin/catkin_ws/src/offloadable_face_recognition/msg/FeatureCoordinates.msg")
+set(offloadable_face_recognition_SERVICE_FILES "/home/justin/catkin_ws/src/offloadable_face_recognition/srv/AddFeatures.srv;/home/justin/catkin_ws/src/offloadable_face_recognition/srv/PruneFeatures.srv")
