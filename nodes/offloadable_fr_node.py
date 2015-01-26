@@ -134,6 +134,7 @@ class Offloadable_FR_Node:
 
 	def convert_to_tuple_array(self, feature_coordinates):
 		converted_array = []
+		
 		fc_array = list(feature_coordinates)
 
 		for fc in fc_array:
