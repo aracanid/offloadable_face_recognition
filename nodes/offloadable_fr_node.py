@@ -108,6 +108,8 @@ class Offloadable_FR_Node:
 
 		self.queue_size = 1
 
+		rate = rospy.Rate(10) # 10hz
+
 	def convert_img_to_cv(self, ros_image, encoding="passthrough"):
 		try:
 			cv_image = self.bridge.imgmsg_to_cv2(ros_image, desired_encoding=encoding)
