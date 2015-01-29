@@ -22,6 +22,7 @@ class Offloadable_FR_Node:
 		self.face_box_coordinates = "face_box_coordinates"
 		self.marker_image_output = "marker_image_output"
 		self.output_image = "output_image"
+		self.offloading_command_sub = "offloading_command_sub"
 
 		self.rate = rospy.Rate(1) #Hz
 		

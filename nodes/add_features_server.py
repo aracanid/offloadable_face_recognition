@@ -69,19 +69,12 @@ class Add_Features_Server(Offloadable_FR_Node):
                 distance = self.distance_to_cluster((x,y), features)
                 if distance > self.ADD_FEATURE_DISTANCE:
                     features.append((x,y))
-                    # Briefly display a blue disc where the new point is added
-                    # if show_add_drop:
-                    #     cv2.circle(marker_image, (x, y), 3, (255, 255, 0, 0), .CV_FILLED, 2, 0)
 
-        print "bleugh " + str(features)
         # Remove duplicate features 
         features = list(set(features))
-        print "bleugh2 " + str(features)
     
         response = self.convert_to_feature_coordinates(features)
-
-        print "secondf " + str(response)
-
+        
         return AddFeaturesResponse(response)
 
     def distance_to_cluster(self, test_point, cluster):

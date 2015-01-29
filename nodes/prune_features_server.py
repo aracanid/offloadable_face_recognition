@@ -27,9 +27,7 @@ class Prune_Features_Server(Offloadable_FR_Node):
 		s = rospy.Service('prune_features', PruneFeatures, self.prune_features)
 
 	def prune_features(self, request):
-		print "before " + str(request.prev_features)
 		prev_features = self.convert_to_tuple_array(request.prev_features)
-		print "after" + str(prev_features)
 		sum_x = 0
 		sum_y = 0
 		sse = 0
@@ -76,9 +74,7 @@ class Prune_Features_Server(Offloadable_FR_Node):
 			score = self.GOOD_CLUSTER
 
 		response = self.convert_to_feature_coordinates(prev_features)
-
-		print "bleguh" + str(response)
-
+		
 		return PruneFeaturesResponse(response, score)
 
 def main():
