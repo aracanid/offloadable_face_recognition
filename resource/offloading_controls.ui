@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>offloading_controls_widget</class>
+ <widget class="QWidget" name="offloading_controls_widget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>480</width>
+    <height>160</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Offloading Controls</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <layout class="QGridLayout" name="main_layout_view">
+     <item row="1" column="0">
+      <layout class="QVBoxLayout" name="offloading_slider_view">
+       <item>
+        <widget class="Line" name="line">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="offloading_percentage_label">
+         <property name="text">
+          <string>Offloading Percentage</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSlider" name="offloading_percentage_slider">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="p">
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_4">
+           <item>
+            <widget class="QLabel" name="percentage_0_label">
+             <property name="text">
+              <string>0%</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="percentage_50_label">
+             <property name="text">
+              <string>50%</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignHCenter|Qt::AlignTop</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="percentage_100_label">
+             <property name="text">
+              <string>100%</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </item>
+     <item row="0" column="0">
+      <layout class="QVBoxLayout" name="offloading_type_view_2">
+       <item>
+        <widget class="QLabel" name="offloading_type_label">
+         <property name="text">
+          <string>Offloading Type</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="radio_button_view">
+         <item>
+          <widget class="QRadioButton" name="automatic_offloading_btn">
+           <property name="text">
+            <string>Automatic</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="manual_offloading_btn">
+           <property name="text">
+            <string>Manual</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </item>
+     <item row="2" column="0">
+      <layout class="QVBoxLayout" name="verticalLayout_4"/>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

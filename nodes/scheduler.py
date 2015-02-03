@@ -6,6 +6,7 @@ import numpy as np
 import psutil as ps
 
 from  offloadable_fr_node import Offloadable_FR_Node
+from offloadable_face_recognition.msg import OffloadCommand
 from cv_bridge import CvBridge, CvBridgeError
 
 class Scheduler(Offloadable_FR_Node):
@@ -15,6 +16,8 @@ class Scheduler(Offloadable_FR_Node):
 		print "Initialising " + node_name
 
 		Offloadable_FR_Node.__init__(self, node_name)
+
+		image_sub = rospy.Subscriber("scheduler_commands", OffloadCommand, offloading_command_update, queue_size=self.queue_size)
 
 		self.MAX_LOW_CPU_USAGE = 25.0
 		self.MAX_MID_CPU_USAGE = 50.0
@@ -72,6 +75,8 @@ class Scheduler(Offloadable_FR_Node):
 		else:
 			with offload_command_lock:
 				cpu_usage = self.percentage
+
+		cpu_usage = 50 #remove
 
 		if cpu_usage >= self.MAX_HIGH_CPU_USAGE:
 			self.current_lk_topic = offload_to_node(self.prev_lk_topic, self.mux_lk)

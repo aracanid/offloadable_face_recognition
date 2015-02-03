@@ -1,0 +1,2 @@
+bool is_auto
+uint32 percentage

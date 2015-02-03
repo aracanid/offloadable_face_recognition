@@ -1,2 +1,2 @@
-bool is_auto
+bool type
 uint32 percentage
