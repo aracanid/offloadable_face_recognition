@@ -23,7 +23,7 @@
     <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
     <remap from="pre_processed_image" to="/image_pre_processing/mul_pp" />
     <remap from="face_detect_output_image" to="/face_detect_output_image/mul_fd" />
-    <remap from="face_box_coordinates" to="/face_box_coordinates/mul_fbc/mul_fbc" />
+    <remap from="face_box_coordinates" to="/face_detect_output_image/mul_fbc" />
     <remap from="output_image" to="/lk_tracker/output_image_pi" />
 
   </node>
@@ -49,13 +49,9 @@
     <remap from="lk_topic_one" to="/lk_tracker/output_image_pi" />
     <remap from="lk_topic_two" to="/lk_tracker/output_image_pc" />
 
-    <remap from="fbc_topic_one" to="/face_box_coordinates/face_box_coordinates_pi" />
-    <remap from="fbc_topic_two" to="/face_box_coordinates/face_box_coordinates_pc" />
-
     <remap from="mux_pp" to="/multiplexers/mux_pp" />
     <remap from="mux_fd" to="/multiplexers/mux_fd" />
     <remap from="mux_lk" to="/multiplexers/mux_lk" />
-    <remap from="mux_fbc" to="/multiplexers/mux_fbc" />
   </node>
 
   <node pkg="offloadable_face_recognition" name="prune_features_server" type="prune_features_server.py" output="screen"/>

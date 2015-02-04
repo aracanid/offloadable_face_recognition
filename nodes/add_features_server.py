@@ -36,11 +36,7 @@ class Add_Features_Server(Offloadable_FR_Node):
 
     def add_features(self, request):
 
-        print str(request.prev_features)
-
         prev_features = self.convert_to_tuple_array(request.prev_features)
-
-        print str(prev_features)
 
         track_box = request.track_box
 

@@ -39,6 +39,11 @@ class Scheduler(Offloadable_FR_Node):
 		self.fd_topic_two = "fd_topic_two"
 		self.fd_topics = [self.fd_topic_one, self.fd_topic_two]
 
+		# FaceBox Coordinates topics
+		self.fbc_topic_one = "fbc_topic_one"
+		self.fbc_topic_two = "fbc_topic_two"
+		self.fbc_topics = [self.fbc_topic_one, self.fbc_topic_two]
+
 		# Lucas-Kande tracking topics
 		self.lk_topic_one = "lk_topic_one"
 		self.lk_topic_two = "lk_topic_two"
@@ -52,6 +57,7 @@ class Scheduler(Offloadable_FR_Node):
 		self.mux_pp = "mux_pp"
 		self.mux_fd = "mux_fd"
 		self.mux_lk = "mux_lk"
+		self.mux_fbc = "mux_fbc"
 
 		self.isAutomatic = True
 		self.percentage = 0
@@ -63,7 +69,7 @@ class Scheduler(Offloadable_FR_Node):
 
 	def offloading_command_update(self, command):
 		with self.offload_command_lock:
-			self.isAutomatic = command.isAutomatic
+			self.isAutomatic = command.type
 			self.percentage = command.percentage
 
 	def offloading_scheduler(self):
@@ -83,13 +89,14 @@ class Scheduler(Offloadable_FR_Node):
 				else:
 					cpu_usage = ps.cpu_percent()
 					print str(cpu_usage)
+
+				print "actual cpu output " + str(cpu_usage) #remove
 			else:
-				with offload_command_lock:
+				with self.offload_command_lock:
 					cpu_usage = self.percentage
+				print "manual cpu output " + str(cpu_usage) #remove
 
-			print "actual cpu output" + str(cpu_usage) #remove
-
-			cpu_usage = 51
+			
 
 			if cpu_usage >= self.MAX_HIGH_CPU_USAGE and not self.lk_offloaded:
 				self.offload_to_node(self.lk_topics[1], self.mux_lk)
@@ -97,12 +104,23 @@ class Scheduler(Offloadable_FR_Node):
 				print "offloaded lk"
 			elif cpu_usage >= self.MAX_MID_CPU_USAGE and not self.fd_offloaded:
 				self.offload_to_node(self.fd_topics[1], self.mux_fd)
+				self.offload_to_node(self.fbc_topics[1], self.mux_fbc)
 				self.fd_offloaded = True
 				print "offloaded fd"
 			elif cpu_usage >= self.MAX_LOW_CPU_USAGE and not self.pp_offloaded:
 				self.offload_to_node(self.pp_topics[1], self.mux_pp)
 				self.pp_offloaded = True
 				print "offloaded pp"
+			elif cpu_usage < self.MAX_HIGH_CPU_USAGE and self.lk_offloaded:
+				self.offload_to_node(self.lk_topics[0], self.mux_lk)
+				self.lk_offloaded = False
+			elif cpu_usage < self.MAX_MID_CPU_USAGE and self.fd_offloaded:
+				self.offload_to_node(self.fd_topics[0], self.mux_fd)
+				self.offload_to_node(self.fbc_topics[0], self.mux_fbc)
+				self.fd_offloaded = False
+			elif cpu_usage < self.MAX_LOW_CPU_USAGE and self.pp_offloaded:
+				self.offload_to_node(self.pp_topics[0], self.mux_pp)
+				self.pp_offloaded = False
 			#elif cpu_usage < self.MAX_LOW_CPU_USAGE:
 
 
@@ -125,7 +143,6 @@ class Scheduler(Offloadable_FR_Node):
 			print "Offloaded to node" + str(prev_topic)
 		except rospy.ServiceException as exc:
 			print("Service did not process request: " + str(exc))
-		return prev_topic
 
 def main(args):
 	try:   

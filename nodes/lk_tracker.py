@@ -72,7 +72,6 @@ class LK_Tracker(Offloadable_FR_Node):
     def update_face_box(self, face_box):
         with self.face_box_lock:
             self.face_box = face_box
-            print "faceBox updated"
 
     def track_lk(self, ros_image):
 
@@ -130,7 +129,6 @@ class LK_Tracker(Offloadable_FR_Node):
 
             add_features = rospy.ServiceProxy('add_features', AddFeatures)
             try:
-                print str(self.features)
                 service_response = add_features(self.convert_to_feature_coordinates(self.features), face_box, ros_image)
                 self.features = self.convert_to_tuple_array(service_response.features)
             except rospy.ServiceException as exc:
@@ -165,7 +163,6 @@ class LK_Tracker(Offloadable_FR_Node):
 
             try:
                 response = prune_features(self.convert_to_feature_coordinates(self.features))
-                print str(response)
                 self.features = self.convert_to_tuple_array(response.features)
                 score = response.score
 
