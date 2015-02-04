@@ -17,50 +17,52 @@ class Scheduler(Offloadable_FR_Node):
 
 		Offloadable_FR_Node.__init__(self, node_name)
 
-		image_sub = rospy.Subscriber("scheduler_commands", OffloadCommand, offloading_command_update, queue_size=self.queue_size)
+		self.offloading_command_sub = rospy.Subscriber("scheduler_commands", OffloadCommand, offloading_command_update, queue_size=self.queue_size)
 
 		self.MAX_LOW_CPU_USAGE = 25.0
 		self.MAX_MID_CPU_USAGE = 50.0
 		self.MAX_HIGH_CPU_USAGE = 75.0
 		self.cpu_count = ps.cpu_count()
 
+		# Preprocessing topics
 		self.pp_topic_one = "pp_topic_one"
 		self.pp_topic_two = "pp_topic_two"
+		self.pp_topics = [self.pp_topic_one, self.pp_topic_two]
+
+		# Face dectection topics
 		self.fd_topic_one = "fd_topic_one"
 		self.fd_topic_two = "fd_topic_two"
+		self.fd_topics = [self.fd_topic_one, self.fd_topic_two]
+
+		# Lucas-Kande tracking topics
 		self.lk_topic_one = "lk_topic_one"
 		self.lk_topic_one = "lk_topic_two"
+		self.lk_topics = [self.lk_topic_one, self.lk_topic_two]
 
-		self.current_pp_topic = "pp_topic_one"
-		self.current_fd_topic = "fd_topic_one"
-		self.current_lk_topic = "lk_topic_one"
+		self.pp_offloaded = False
+		self.fd_offloaded = False
+		self.lk_offloaded = False
 
-		self.prev_pp_topic = "pp_topic_two"
-		self.prev_fd_topic = "fd_topic_two"
-		self.prev_lk_topic = "lk_topic_two"
-
+		# Multiplexer identifiers
 		self.mux_pp = "mux_pp"
 		self.mux_fd = "mux_fd"
 		self.mux_lk = "mux_lk"
 
-		self.is_auto = True
+		self.isAutomatic = True
 		self.percentage = 0
 
 		self.offload_command_lock = threading.Lock()
 
-		self.offloading_command_sub = rospy.Subscriber(self.offloading_command_sub, OffloadCommand, self.offloading_command, queue_size=self.queue_size)
-
-
 	def offloading_command_update(self, command):
 		with offload_command_lock:
-			self.is_auto = command.is_auto
+			self.isAutomatic = command.isAutomatic
 			self.percentage = command.percentage
 
 	def offloading_scheduler(self):
 		with offload_command_lock:
-			is_auto = self.is_auto
+			isAutomatic = self.isAutomatic
 
-		if is_auto:
+		if isAutomatic:
 			cpu_usage_sum = 0
 
 			# If there are multiple CPUs then we should take the average between these
@@ -76,24 +78,34 @@ class Scheduler(Offloadable_FR_Node):
 			with offload_command_lock:
 				cpu_usage = self.percentage
 
-		cpu_usage = 50 #remove
+		print "actual cpu output" + cpu_usage #remove
 
-		if cpu_usage >= self.MAX_HIGH_CPU_USAGE:
-			self.current_lk_topic = offload_to_node(self.prev_lk_topic, self.mux_lk)
+		cpu_usage = 51
+
+		if cpu_usage >= self.MAX_HIGH_CPU_USAGE and not self.lk_offloaded:
+			offload_to_node(self.lk_topics[1], self.mux_lk)
+			self.lk_offloaded = True
 			print "offloaded lk"
-		elif cpu_usage >= self.MAX_MID_CPU_USAGE:
-			self.current_fd_topic = offload_to_node(self.prev_fd_topic, self.mux_fd)
+		elif cpu_usage >= self.MAX_MID_CPU_USAGE and not self.fd_offloaded:
+			offload_to_node(self.fd_topics[1], self.mux_fd)
+			self.fd_offloaded = True
 			print "offloaded fd"
-		elif cpu_usage >= self.MAX_LOW_CPU_USAGE:
-			self.current_pp_topic = offload_to_node(self.prev_pp_topic, self.mux_pp)
+		elif cpu_usage >= self.MAX_LOW_CPU_USAGE and not self.pp_offloaded:
+			offload_to_node(self.pp_topics[1], self.mux_pp)
+			self.pp_offloaded = True
 			print "offloaded pp"
 		#elif cpu_usage < self.MAX_LOW_CPU_USAGE:
+
+
+		####
+		# TODO: ADD WIFI SIGNAL STRENGTH CHECKER
+		###
 
 		# Fill the remainder of the frequency with a wait to prevent excessive spinning
 		self.rate.sleep()
 
 	def offload_to_node(self, target_topic, target_mux):
-		offload_node = rospy.ServiceProxy('mux_select', target_mux/select)
+		offload_node = rospy.ServiceProxy('mux_select', (target_mux).select)
 			try:
 				prev_topic = offload_node(target_topic)
 				print "Offloaded to node" + str(prev_topic)
