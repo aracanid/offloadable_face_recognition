@@ -6,5 +6,5 @@ rosrun topic_tools mux /face_detect_output_image/mul_fd face_detect_output_image
 
 rosrun topic_tools mux /image_pre_processing/mul_pp /image_pre_processing/pre_processed_image_pi /image_pre_processing/pre_processed_image_pc mux:=mux_pp &
 
-rosun topic_tools mux /face_box_coordinates/mul_fbc /face_box_coordinates/face_box_coordinates_pi /face_box_coordinates/face_box_coordinates_pc mux:=mux_fbc &
+rosrun topic_tools mux /face_box_coordinates/mul_fbc /face_box_coordinates/face_box_coordinates_pi /face_box_coordinates/face_box_coordinates_pc mux:=mux_fbc &
 

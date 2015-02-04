@@ -176,7 +176,7 @@ class LK_Tracker(Offloadable_FR_Node):
                 print("Service did not process request: " + str(exc))
                     # Add features if the number is getting too low
 
-        if len(self.features) < self.abs_min_features and feature_box is not None:
+        if len(self.features) < self.abs_min_features and face_box is not None:
             self.expand_roi = self.expand_roi_init * self.expand_roi
 
             ((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
