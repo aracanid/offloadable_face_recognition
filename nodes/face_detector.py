@@ -9,7 +9,7 @@ import numpy as np
 from offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
-from offloadable_face_recognition.msg import FaceBox
+from offloadable_face_recognition.msg import FaceBox, SchedulerCommand
 
 class Face_Detector(Offloadable_FR_Node):
 
@@ -51,7 +51,7 @@ class Face_Detector(Offloadable_FR_Node):
 		self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
 
 		# Subscribe to the preprocessed image output and set the detect_face as the callback
-		image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
+		self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
 
 	def detect_face(self, ros_image):
 
@@ -121,10 +121,27 @@ class Face_Detector(Offloadable_FR_Node):
 				return face_box
 		return None
 
+
+	# Abstract method implementations to allow scheduler commands to be processed
+	def unsubscribe_node(self):
+		# Function to unsubscribe a node from its topics and stop publishing data
+		self.output_face_box_pub.unregister()
+		self.output_image_pub.unregister()
+		self.face_detect_output_image_pub.unregister()
+		self.image_sub.unregister()
+
+	def resubscribe_node(self):
+		# Function to resubscribe and republish the nodes data
+		self.output_face_box_pub = rospy.Publisher(self.face_box_coordinates, FaceBox, queue_size=self.queue_size)
+		self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size) 
+		self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
+		self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
+
+
 def main(args):
 	try:   
 		# Fire up the node.
-		FD = Face_Detector("ev3_face_detector")
+		FD = Face_Detector("face_detection_node")
 		# Spin so our services will work
 		rospy.spin()
 	except KeyboardInterrupt:

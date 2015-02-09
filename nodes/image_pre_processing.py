@@ -9,6 +9,7 @@ import numpy as np
 from  offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+from offloadable_face_recognition.msg import SchedulerCommand
 
 class Image_Pre_Processing(Offloadable_FR_Node):
 
@@ -22,15 +23,13 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		self.grey = None
 		self.pre_processed_image = None
 		self.marker_image = None
-		
-		# A publisher to output the greyscale processed image
-		self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
-
-		# Wait until the image topics are ready before starting
-		#rospy.wait_for_message(self.input_rgb_image, Image)
 
 		# Subscribe to the raw camera image topic and set the image processing callback to self.pre_processing()
-		image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
+		self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
+		# A publisher to output the greyscale processed image
+		self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
+		# A subscriber for receiving scheduler commands
+		self.scheduler_sub = rospy.Subscriber(self.scheduler_commands, SchedulerCommand, self.scheduler_listener, queue_size=self.queue_size)
 
 		self.r = rospy.Rate(10)
 
@@ -62,9 +61,21 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 			print e
 
 
+
+	def unsubscribe_node(self):
+		# Function to unsubscribe a node from its topics and stop publishing data
+		self.image_sub.unregister()
+		self.pre_processed_image_pub.unregister()
+
+	def resubscribe_node(self):
+		# Function to resubscribe and republish the nodes data
+		self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
+		self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
+
+
 def main(args):
 	try:   
-		PP = Image_Pre_Processing("ev3_image_pre_processing")
+		PP = Image_Pre_Processing("pre_processing_node")
 		print "Node started..."
 		rospy.spin()
 	except KeyboardInterrupt:

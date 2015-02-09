@@ -55,6 +55,7 @@ add_message_files(
 	FaceBox.msg
 	FeatureCoordinates.msg
 	OffloadCommand.msg
+	SchedulerCommand.msg
 )
 
 ## Generate services in the 'srv' folder

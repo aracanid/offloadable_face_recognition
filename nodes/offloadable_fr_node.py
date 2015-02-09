@@ -9,13 +9,17 @@ from sensor_msgs.msg import Image, RegionOfInterest, CameraInfo
 from geometry_msgs.msg import PointStamped
 from offloadable_face_recognition.msg import *
 from cv_bridge import CvBridge, CvBridgeError
+import abc
 import time
 
 class Offloadable_FR_Node:
 	def __init__(self, node_name):
+		node_name = rospy.get_param("~node_name", "node_name")
+		print node_name
 		rospy.init_node(node_name)
 		rospy.on_shutdown(self.cleanup)
 
+		self.node_name = node_name
 		self.input_rgb_image = "input_rgb_image"
 		self.pre_processed_output_image = "pre_processed_image"
 		self.face_detect_output_image = "face_detect_output_image"
@@ -23,6 +27,7 @@ class Offloadable_FR_Node:
 		self.marker_image_output = "marker_image_output"
 		self.output_image = "output_image"
 		self.offloading_command_sub = "offloading_command_sub"
+		self.scheduler_commands = "scheduler_commands"
 
 		self.rate = rospy.Rate(1) #Hz
 		
@@ -109,7 +114,12 @@ class Offloadable_FR_Node:
 
 		self.queue_size = 1
 
+		__metaclass__ = abc.ABCMeta
+
 		rate = rospy.Rate(10) # 10hz
+
+		# A subscriber for receiving scheduler commands
+		self.scheduler_sub = rospy.Subscriber(self.scheduler_commands, SchedulerCommand, self.scheduler_listener, queue_size=self.queue_size)
 
 	def convert_img_to_cv(self, ros_image, encoding="passthrough"):
 		try:
@@ -158,7 +168,28 @@ class Offloadable_FR_Node:
 				return (w > 0) and (h > 0)
 			except:
 				return False
-		
+
+	def scheduler_listener(self, scheduler_command):
+		if scheduler_command.node_name == self.node_name:
+			if scheduler_command.offload:
+				unsubscribe_node() # Must be implemented by each offloadable node
+			else:
+				resubscribe_node() # Must be implemented by each offloadable node
+
 	def cleanup(self):
 		print "Shutting down vision node."
-		cv.DestroyAllWindows()  
+		cv.DestroyAllWindows()
+
+
+	# Abstract methods that must be implemented in order to 
+	# comply with offloading requirements.
+	@abc.abstractmethod
+	def unsubscribe_node(self):
+		# Function to unsubscribe a node from its topics and stop publishing data
+		return 
+
+	@abc.abstractmethod
+	def resubscribe_node(self):
+		# Function to resubscribe and republish the nodes data
+		return
+

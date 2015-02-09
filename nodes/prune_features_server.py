@@ -77,6 +77,14 @@ class Prune_Features_Server(Offloadable_FR_Node):
 		
 		return PruneFeaturesResponse(response, score)
 
+	def unsubscribe_node(self):
+		#unused
+		return
+		
+	def resubscribe_node(self):
+		#unused
+		return
+
 def main():
 	try:
 		PF = Prune_Features_Server("prune_features_server")

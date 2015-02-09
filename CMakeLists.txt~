@@ -14,7 +14,6 @@ find_package(
 	cv_bridge 
 	image_transport 
 	message_generation
-	usb_cam
 )
 
 ## System dependencies are found with CMake's conventions
@@ -97,7 +96,6 @@ catkin_package(
     cv_bridge 
     image_transport 
     opencv2
-    usb_cam
 
     CATKIN_DEPENDS message_runtime
 )
