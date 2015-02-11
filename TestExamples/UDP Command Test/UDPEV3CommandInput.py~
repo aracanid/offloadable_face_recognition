@@ -33,10 +33,10 @@ try:
               sock.sendto("pitchdown", (UDP_IP, UDP_PORT))
               print "ServoArm Pitch Down"
             elif(c=="a"):
-              sock.sendto("yaw_left", (UDP_IP, UDP_PORT))
+              sock.sendto("left", (UDP_IP, UDP_PORT))
               print "Tracks Yaw Left"
             elif(c=="d"):
-              sock.sendto("yaw_right", (UDP_IP, UDP_PORT))
+              sock.sendto("right", (UDP_IP, UDP_PORT))
               print "Tracks Yaw Right"
             elif(c=="q"):
               sock.sendto("rollleft", (UDP_IP, UDP_PORT))

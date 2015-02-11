@@ -56,6 +56,7 @@ add_message_files(
 	FeatureCoordinates.msg
 	OffloadCommand.msg
 	SchedulerCommand.msg
+	MotorCommand.msg
 )
 
 ## Generate services in the 'srv' folder

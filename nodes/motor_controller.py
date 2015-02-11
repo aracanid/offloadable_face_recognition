@@ -2,62 +2,45 @@
 
 import socket
 import sys
-from ev3.ev3dev import Motor
+import rospy 
+from offloadable_face_recognition.msg import MotorCommand
+import time
 
-class motor_controller():
+class Motor_Controller:
 
-	self.PORT_NUMBER = 5005
-	self.DATA_SIZE = 1024
-	self.socket = None
+	def __init__(self):
 
-	self.right_track_motor=Motor(port=Motor.PORT.A)
-	self.left_track_motor=Motor(port=Motor.PORT.B)
-	self.servo_arm_pitch_motor=Motor(port=Motor.PORT.C)
-	self.servo_arm_roll_motor=Motor(port=Motor.PORT.D)
+		self.PORT_NUMBER = 5005
+		self.DATA_SIZE = 1024
+		self.socket = None
+		self.MOTOR_COMMANDS = "motor_commands"
+		self.queue_size = 1
 
-	def setup(self):
-		controller_ip = raw_input("Please enter the IP address of the controlling pc: ")
+		motor_server_ip = raw_input("Please enter the IP address of the motor_server: ")
 		
-		print "Setting up connection..."
-		self.initialise_connection(controller_ip, self.PORT_NUMBER)
-		
-		print "Initialising Motors..."
-		self.initialise_motors()
+		print "Initialising connection..."
+		self.initialise_connection(motor_server_ip)
+
+		self.motor_commands = rospy.Subscriber(self.MOTOR_COMMANDS, MotorCommand, self.motor_command_listener, queue_size=self.queue_size)
+
+	def motor_command_listener(self, motor_command):
+		print "motor_controller: command recieved " + str(motor_command.command)
+		self.socket.send(motor_command.command)
 
 
-	def initialise_connection(self, ip_addr, port):
-		hostname = socket.gethostbyname( '0.0.0.0' )
+	def initialise_connection(self, ip_addr):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.socket.bind((hostname, PORT))
+		self.socket.connect((ip_addr, self.PORT_NUMBER))
 
 
-	def initialise_motors(self):
-		set_up_motor(self.right_track_motor)
-		set_up_motor(self.left_track_motor)
-		set_up_motor(self.servo_arm_pitch_motor)
-		set_up_motor(self.servo_arm_roll_motor)
-
-	def set_up_motor(self, motor):
-	    motor.reset()
-	    motor.position = 0
-	    motor.regulation_mode = True
-	    motor.position_mode = relative
-	    motor.run_mode = position
-	    motor.pulses_per_second_sp = 30
-	    motor.hold_mode = on
-	    motor.stop_mode = brake
-
-	def process_input_command(self, data):
-
+	def test(self):
+		while True:
+			self.socket.send("yaw_right")
+			time.sleep(1)
 
 def main(self):
-
-	setup()
-
-	while True:
-		(data,addr) = s.recvfrom(SIZE) #data size
-
+	mc = Motor_Controller()
+	mc.test()
 
 if __name__ == '__main__':
-
 	main(sys.argv)

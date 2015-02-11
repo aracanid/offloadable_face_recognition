@@ -7,11 +7,13 @@ import numpy as np
 import psutil as ps
 import threading
 
-from  offloadable_fr_node import Offloadable_FR_Node
 from offloadable_face_recognition.msg import OffloadCommand, SchedulerCommand
 from cv_bridge import CvBridge, CvBridgeError
 
 class Scheduler:
+
+	self.MANUAL_OFFLOAD_COMMANDS = "manual_offload_commands"
+	self.SCHEDULER_COMMANDS = "scheduler_commands"
 
 	def __init__(self, node_name):
 
@@ -23,8 +25,8 @@ class Scheduler:
 
 		self.queue_size = 1
 
-		self.offloading_command_sub = rospy.Subscriber("manual_offload_commands", OffloadCommand, self.offloading_command_listener, queue_size=self.queue_size)
-		self.scheduler_pub = rospy.Publisher("scheduler_commands", SchedulerCommand, queue_size=self.queue_size)
+		self.offloading_command_sub = rospy.Subscriber(self.MANUAL_OFFLOAD_COMMANDS, OffloadCommand, self.offloading_command_listener, queue_size=self.queue_size)
+		self.scheduler_pub = rospy.Publisher(self.SCHEDULER_COMMANDS, SchedulerCommand, queue_size=self.queue_size)
 
 		self.LOW_CPU_USAGE_THRESHOLD = 25.0
 		self.MID_CPU_USAGE_THRESHOLD = 50.0
