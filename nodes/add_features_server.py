@@ -68,7 +68,6 @@ class Add_Features_Server(Offloadable_FR_Node):
 
 		# Remove duplicate features 
 		features = list(set(features))
-	
 		response = self.convert_to_feature_coordinates(features)
 		
 		return AddFeaturesResponse(response)

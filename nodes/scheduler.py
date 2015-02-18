@@ -12,9 +12,6 @@ from cv_bridge import CvBridge, CvBridgeError
 
 class Scheduler:
 
-	self.MANUAL_OFFLOAD_COMMANDS = "manual_offload_commands"
-	self.SCHEDULER_COMMANDS = "scheduler_commands"
-
 	def __init__(self, node_name):
 
 		node_name = rospy.get_param("~node_name", "node_name")
@@ -22,6 +19,9 @@ class Scheduler:
 		rospy.init_node(node_name)
 
 		print "Initialising " + node_name
+
+		self.MANUAL_OFFLOAD_COMMANDS = "manual_offload_commands"
+		self.SCHEDULER_COMMANDS = "scheduler_commands"
 
 		self.queue_size = 1
 
@@ -73,25 +73,31 @@ class Scheduler:
 				self.offload_node(self.pc_lk_tracker_node, self.OFFLOAD_TO_PC)
 				self.lk_offloaded = True
 				print "offloaded lk"
-			elif cpu_usage >= self.MID_CPU_USAGE_THRESHOLD and not self.fd_offloaded:
+
+			if cpu_usage >= self.MID_CPU_USAGE_THRESHOLD and not self.fd_offloaded:
 				self.offload_node(self.pc_face_detection_node, self.OFFLOAD_TO_PC)
 				print "offloaded fd"
-			elif cpu_usage >= self.LOW_CPU_USAGE_THRESHOLD and not self.pp_offloaded:
+
+			if cpu_usage >= self.LOW_CPU_USAGE_THRESHOLD and not self.pp_offloaded:
 				self.offload_node(pc_pre_processing_node, self.OFFLOAD_TO_PC)
 				self.pp_offloaded = True
 				print "offloaded pp"
-			elif cpu_usage < self.HIGH_CPU_USAGE_THRESHOLD and self.lk_offloaded:
+
+			if cpu_usage < self.HIGH_CPU_USAGE_THRESHOLD and self.lk_offloaded:
 				self.offload_node(self.rpi_lk_tracker_node, self.OFFLOAD_TO_RPI)
 				self.lk_offloaded = False
 				print "unloaded lk"
-			elif cpu_usage < self.MID_CPU_USAGE_THRESHOLD and self.fd_offloaded:
+
+			if cpu_usage < self.MID_CPU_USAGE_THRESHOLD and self.fd_offloaded:
 				self.offload_node(self.rpi_face_detection_node, self.OFFLOAD_TO_RPI)
 				self.fd_offloaded = False
 				print "unloaded fd"
-			elif cpu_usage < self.LOW_CPU_USAGE_THRESHOLD and self.pp_offloaded:
+
+			if cpu_usage < self.LOW_CPU_USAGE_THRESHOLD and self.pp_offloaded:
 				self.offload_node(self.rpi_pre_processing_node, self.OFFLOAD_TO_RPI)
 				self.pp_offloaded = False
 				print "unloaded pp"
+				
 			#elif cpu_usage < self.LOW_CPU_USAGE_THRESHOLD:
 
 

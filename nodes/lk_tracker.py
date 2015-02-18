@@ -45,7 +45,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.marker_image = None
 		self.pre_processed_image = None
 
-		self.isOffloaded = False
+		self.isOffloaded = True
 
 		# # params for ShiTomasi corner detection
 		# self.feature_params = dict( maxCorners = self.MAX_COUNT,
@@ -79,40 +79,43 @@ class LK_Tracker(Offloadable_FR_Node):
 	def track_lk(self, ros_image):
 
 		cv_image = self.convert_img_to_cv(ros_image)
-		im_height, im_width = cv_image.shape
+		im_width, im_height = cv_image.shape
 
 		with self.face_box_lock:
 			face_box = self.face_box
 
 		# Switch between the incoming image streams depending on whether we have features or not
-		if len(self.features) > 0:
+		if len(self.features) > 0 and self.isOffloaded == False:
 			with self.subscriber_lock:
 				self.image_sub.unregister()
 				self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
 				self.face_box_sub.unregister()
+				self.isOffloaded = True
 				print "switched topic to tracking only"
 
-		elif self.face_box_sub is None and len(self.features) == 0:
+		elif self.isOffloaded == True and len(self.features) == 0:
 			with self.subscriber_lock:
 				self.image_sub.unregister()
 				self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
-				self.image_sub.unregister()
+				#self.face_box_sub.unregister()
 				self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 
 				text_scale = 0.4 * im_width / 160. + 0.1
 				text_pos = (100, im_height-100)
 				cv2.putText(self.marker_image, self.NO_IMAGE_TEXT, text_pos, cv2.FONT_HERSHEY_COMPLEX, text_scale, (255,0,0), thickness=4)
+				self.isOffloaded = False
 				print "switched topic back to face detector"
 
 		feature_box = None
 		
 		#  Initialize intermediate images if necessary 
 		if self.grey is None:
-			self.grey = np.zeros((im_height,im_width,1), np.uint8)
-			self.prev_grey = np.zeros((im_height,im_width,1), np.uint8)
+			self.grey = np.zeros((im_width,im_height,1), np.uint8)
+			self.prev_grey = np.zeros((im_width,im_height,1), np.uint8)
 			self.features = []
 		
-		self.marker_image = np.zeros((im_height,im_width,3), np.uint8)
+		self.marker_image = np.zeros((im_width,im_height,3), np.uint8)
+
 		self.grey = cv_image
 
 		if face_box and len(self.features) > 0:
@@ -129,8 +132,9 @@ class LK_Tracker(Offloadable_FR_Node):
 
 			pt1 = (face_box.x, face_box.y)
 			pt2 = (face_box.x+face_box.width, face_box.y+face_box.height)
-			cv2.rectangle(cv_image, pt1, pt2, (255,0,0), thickness=4)
+			cv2.rectangle(cv_image, pt1, pt2, (255,0,0), thickness=2)
 
+			rospy.wait_for_service('add_features')
 			add_features = rospy.ServiceProxy('add_features', AddFeatures)
 			try:
 				service_response = add_features(self.convert_to_feature_coordinates(self.features), face_box, ros_image)
@@ -160,6 +164,7 @@ class LK_Tracker(Offloadable_FR_Node):
 				feature_box = None
 
 			# Prune features that are too far from the main cluster
+			rospy.wait_for_service('prune_features')
 			prune_features = rospy.ServiceProxy('prune_features', PruneFeatures)
 
 			try:
@@ -177,7 +182,7 @@ class LK_Tracker(Offloadable_FR_Node):
 				print("Service did not process request: " + str(exc))
 					# Add features if the number is getting too low
 
-		if len(self.features) < self.abs_min_features and face_box is not None:
+		if len(self.features) < self.abs_min_features and feature_box is not None:
 			self.expand_roi = self.expand_roi_init * self.expand_roi
 
 			((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
@@ -190,22 +195,21 @@ class LK_Tracker(Offloadable_FR_Node):
 				self.features = []
 				print("Service did not process request: " + str(exc))
 		else:
-			self.expand_roi = self.expand_roi_init    
+			self.expand_roi = self.expand_roi_init
 
 		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
 
 		# Draw the points as green circles and add them to the features matrix 
 		i = 0
 		for the_point in self.features:
-			print "drawing circles"
-			cv2.circle(cv_image, (int(the_point[0]), int(the_point[1])), 3,(0,255,0),self.CV_FILLED)
+			cv2.circle(cv_image, (int(the_point[0]), int(the_point[1])), 1,(0,255,0),self.CV_FILLED)
 			try:
 				self.feature_matrix[0][i] = (int(the_point[0]), int(the_point[1]))
 			except:
 				pass
 			i = i + 1
 
-		ros_image = self.convert_cv_to_img(cv_image)
+		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
 		if feature_box is not None and len(self.features) > 0:
 			try:
@@ -213,6 +217,27 @@ class LK_Tracker(Offloadable_FR_Node):
 			except CvBridgeError, e:
 				print e
 
+	def update_motor_position(self, center_x, center_y):
+		# take the center of the current ellipse as the mean point
+		# and sends the data to the motor controller
+		pass
+
+	def prune_features(self, features):
+		# takes an array of feature coordinates and prunes them
+		# returning the new set of features and a quality score.
+		pass
+
+	def add_features(self, cv_image, track_box, features):
+		# takes an image, a track box and an array of feature coordinates
+		# and adds new features to this. Should return the array of 
+		# new feature coordinates
+		pass
+
+	def draw_graphics(self, cv_image, face_box, feature_box):
+		# take input image, check for whether there is a facebox or feature box
+		# and if there is either, draw the appropriate graphics ontop of the
+		# cv_image. Otherwise simply return the initial image.
+		pass
 
 	def unsubscribe_node(self):
 		# Function to unsubscribe a node from its topics and stop publishing data
