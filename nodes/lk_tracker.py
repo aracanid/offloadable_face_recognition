@@ -39,8 +39,8 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.motor_commands = "motor_commands"
 
 		self.camera_threshold_tolerance = 30 # %percent
-		self.camera_edge_threshold = self.camera_x/100*self.camera_threshold_tolerance
 		self.camera_x, self.camera_y = self.camera_dimensions
+		self.camera_edge_threshold = self.camera_x/100*self.camera_threshold_tolerance
 
 		self.abs_min_features = 6
 		self.min_features = 5
@@ -67,19 +67,19 @@ class LK_Tracker(Offloadable_FR_Node):
 						  criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 		
 		self.scheduler_sub = rospy.Subscriber(self.scheduler_commands, SchedulerCommand, self.scheduler_listener, queue_size=self.queue_size)
-		self.output_image_pub = None
-		self.image_sub = None
-		self.face_box_sub = None
+		# self.output_image_pub = None
+		# self.image_sub = None
+		# self.face_box_sub = None
 
 		# A publisher to output the display image back to a ROS topic 
-		# self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
+		self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
 
 		# # Subscribe to the raw camera image topic and set the image processing callback 
-		# self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
-		# self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
+		self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
+		self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 
 		# Subscribe to the raw camera image topic and set the image processing callback to self.pre_processing()
-		#image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
+		# image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
 		# Subscribe to the preprocessed image output and set the detect_face as the callback
 		#image_sub = rospy.Subscriber(self.marker_image_output, Image, self.update_marker_image, queue_size=self.queue_size)
 
@@ -182,28 +182,29 @@ class LK_Tracker(Offloadable_FR_Node):
 		# and sends the data to the motor controller
 
 		# Compute the COG (center of gravity) of the cluster 
-		for point in features:
-			sum_x = sum_x + point[0]
-			sum_y = sum_y + point[1]
-		
-		center_x = sum_x / features_len
-		center_y = sum_y / features_len
+		if len(features > 0):
+			for point in features:
+				sum_x = sum_x + point[0]
+				sum_y = sum_y + point[1]
+			
+			center_x = sum_x / features_len
+			center_y = sum_y / features_len
 
-		left_threshold = self.camera_edge_threshold
-		right_threshold = self.camera_x - self.camera_threshold_tolerance
-		
-		motor_command = MotorCommand()
+			left_threshold = self.camera_edge_threshold
+			right_threshold = self.camera_x - self.camera_threshold_tolerance
+			
+			motor_command = MotorCommand()
 
-		if center_x <= left_threshold:
-			motor_command.command = self.YAW_RIGHT
-			motor_command.angle = 20
-			self.motor_commands.publish(motor_command)
-		elif center_x >= right_threshold:
-			motor_command.command = self.YAW_LEFT
-			motor_command.angle = 20
-			self.motor_commands.publish(motor_command)
-		else:
-			print "Face was within limits"
+			if center_x <= left_threshold:
+				motor_command.command = self.YAW_RIGHT
+				motor_command.angle = 20
+				self.motor_commands.publish(motor_command)
+			elif center_x >= right_threshold:
+				motor_command.command = self.YAW_LEFT
+				motor_command.angle = 20
+				self.motor_commands.publish(motor_command)
+			else:
+				print "Face was within limits"
 
 
 	def prune_features(self, prev_features):

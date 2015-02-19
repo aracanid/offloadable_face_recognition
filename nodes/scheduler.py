@@ -147,13 +147,11 @@ class Scheduler:
 	def initialise_nodes(self, isLocal):
 		self.rate.sleep()
 		if isLocal == True:
-
-			self.offload_node(self.rpi_pre_processing_node, self.OFFLOAD_TO_RPI)
-			self.offload_node(self.rpi_face_detection_node, self.OFFLOAD_TO_RPI)
-			self.offload_node(self.rpi_lk_tracker_node, self.OFFLOAD_TO_RPI)
+			self.offload_node(self.rpi_pre_processing_node, False)
+			self.offload_node(self.rpi_face_detection_node, False)
+			self.offload_node(self.rpi_lk_tracker_node, False)
 			self.set_nodes_status(self.NODE_LOCAL)
 		else:
-
 			self.offload_node(self.pc_pre_processing_node, self.OFFLOAD_TO_PC)
 			self.offload_node(self.pc_face_detection_node, self.OFFLOAD_TO_PC)
 			self.offload_node(self.pc_lk_tracker_node, self.OFFLOAD_TO_PC)
