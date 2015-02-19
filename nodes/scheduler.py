@@ -14,14 +14,13 @@ class Scheduler:
 
 	def __init__(self, node_name):
 
-		node_name = rospy.get_param("~node_name", "node_name")
-		print node_name
 		rospy.init_node(node_name)
-
 		print "Initialising " + node_name
 
 		self.MANUAL_OFFLOAD_COMMANDS = "manual_offload_commands"
 		self.SCHEDULER_COMMANDS = "scheduler_commands"
+		self.NODE_OFFLOADED = True
+		self.NODE_LOCAL = False
 
 		self.queue_size = 1
 
@@ -43,18 +42,15 @@ class Scheduler:
 		self.pc_face_detection_node = "pc_face_detection_node"
 		self.pc_lk_tracker_node = "pc_lk_tracker_node"
 
-		self.pp_offloaded = False
-		self.fd_offloaded = False
-		self.lk_offloaded = False
-
 		self.isAutomatic = True
 		self.percentage = 0
 
 		self.offload_command_lock = threading.Lock()
 
 		self.rate = rospy.Rate(0.5) # 20hz
+		self.init_rate = rospy.Rate(0.1)
 
-
+		self.initialise_nodes(True)
 
 		#spin the node
 		self.offloading_scheduler()
@@ -65,48 +61,53 @@ class Scheduler:
 			self.percentage = command.percentage
 
 	def offloading_scheduler(self):
-		while True:
+		try:
+			while True:
 
-			cpu_usage = self.get_cpu_usage()
+				cpu_usage = self.get_cpu_usage()
 
-			if cpu_usage >= self.HIGH_CPU_USAGE_THRESHOLD and not self.lk_offloaded:
-				self.offload_node(self.pc_lk_tracker_node, self.OFFLOAD_TO_PC)
-				self.lk_offloaded = True
-				print "offloaded lk"
+				if cpu_usage >= self.HIGH_CPU_USAGE_THRESHOLD and not self.lk_offloaded:
+					self.offload_node(self.pc_lk_tracker_node, self.OFFLOAD_TO_PC)
+					self.lk_offloaded = self.NODE_OFFLOADED
+					print "offloaded lk"
 
-			if cpu_usage >= self.MID_CPU_USAGE_THRESHOLD and not self.fd_offloaded:
-				self.offload_node(self.pc_face_detection_node, self.OFFLOAD_TO_PC)
-				print "offloaded fd"
+				if cpu_usage >= self.MID_CPU_USAGE_THRESHOLD and not self.fd_offloaded:
+					self.offload_node(self.pc_face_detection_node, self.OFFLOAD_TO_PC)
+					self.fd_offloaded = self.NODE_OFFLOADED
+					print "offloaded fd"
 
-			if cpu_usage >= self.LOW_CPU_USAGE_THRESHOLD and not self.pp_offloaded:
-				self.offload_node(pc_pre_processing_node, self.OFFLOAD_TO_PC)
-				self.pp_offloaded = True
-				print "offloaded pp"
+				if cpu_usage >= self.LOW_CPU_USAGE_THRESHOLD and not self.pp_offloaded:
+					self.offload_node(self.pc_pre_processing_node, self.OFFLOAD_TO_PC)
+					self.pp_offloaded = self.NODE_OFFLOADED
+					print "offloaded pp"
 
-			if cpu_usage < self.HIGH_CPU_USAGE_THRESHOLD and self.lk_offloaded:
-				self.offload_node(self.rpi_lk_tracker_node, self.OFFLOAD_TO_RPI)
-				self.lk_offloaded = False
-				print "unloaded lk"
+				if cpu_usage < self.HIGH_CPU_USAGE_THRESHOLD and self.lk_offloaded:
+					self.offload_node(self.rpi_lk_tracker_node, self.OFFLOAD_TO_RPI)
+					self.lk_offloaded = self.NODE_LOCAL
+					print "unloaded lk"
 
-			if cpu_usage < self.MID_CPU_USAGE_THRESHOLD and self.fd_offloaded:
-				self.offload_node(self.rpi_face_detection_node, self.OFFLOAD_TO_RPI)
-				self.fd_offloaded = False
-				print "unloaded fd"
+				if cpu_usage < self.MID_CPU_USAGE_THRESHOLD and self.fd_offloaded:
+					self.offload_node(self.rpi_face_detection_node, self.OFFLOAD_TO_RPI)
+					self.fd_offloaded = self.NODE_LOCAL
+					print "unloaded fd"
 
-			if cpu_usage < self.LOW_CPU_USAGE_THRESHOLD and self.pp_offloaded:
-				self.offload_node(self.rpi_pre_processing_node, self.OFFLOAD_TO_RPI)
-				self.pp_offloaded = False
-				print "unloaded pp"
-				
-			#elif cpu_usage < self.LOW_CPU_USAGE_THRESHOLD:
+				if cpu_usage < self.LOW_CPU_USAGE_THRESHOLD and self.pp_offloaded:
+					self.offload_node(self.rpi_pre_processing_node, self.OFFLOAD_TO_RPI)
+					self.pp_offloaded = self.NODE_LOCAL
+					print "unloaded pp"
+					
+				#elif cpu_usage < self.LOW_CPU_USAGE_THRESHOLD:
 
 
-			####
-			# TODO: ADD WIFI SIGNAL STRENGTH CHECKER
-			###
+				####
+				# TODO: ADD WIFI SIGNAL STRENGTH CHECKER
+				###
 
-			# Fill the remainder of the frequency with a wait to prevent excessive spinning
-			self.rate.sleep()
+				# Fill the remainder of the frequency with a wait to prevent excessive spinning
+				self.rate.sleep()
+
+		except KeyboardInterrupt:
+			print "Scheduler shutting down..."
 
 	def get_cpu_usage(self):
 		with self.offload_command_lock:
@@ -139,8 +140,32 @@ class Scheduler:
 			scheduler_command.node_name = node_name
 			scheduler_command.offload = destination
 			self.scheduler_pub.publish(scheduler_command)
+			print "offloaded node " + node_name
 		except CvBridgeError, e:
 			print e
+
+	def initialise_nodes(self, isLocal):
+		self.rate.sleep()
+		if isLocal == True:
+
+			self.offload_node(self.rpi_pre_processing_node, self.OFFLOAD_TO_RPI)
+			self.offload_node(self.rpi_face_detection_node, self.OFFLOAD_TO_RPI)
+			self.offload_node(self.rpi_lk_tracker_node, self.OFFLOAD_TO_RPI)
+			self.set_nodes_status(self.NODE_LOCAL)
+		else:
+
+			self.offload_node(self.pc_pre_processing_node, self.OFFLOAD_TO_PC)
+			self.offload_node(self.pc_face_detection_node, self.OFFLOAD_TO_PC)
+			self.offload_node(self.pc_lk_tracker_node, self.OFFLOAD_TO_PC)
+			self.set_nodes_status(self.NODE_OFFLOADED)
+
+	def set_nodes_status(self, state):
+			self.lk_offloaded = state
+			self.fd_offloaded = state
+			self.pp_offloaded = state
+
+
+
 
 
 def main(args):

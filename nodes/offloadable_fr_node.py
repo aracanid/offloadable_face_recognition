@@ -14,12 +14,13 @@ import time
 
 class Offloadable_FR_Node:
 	def __init__(self, node_name):
-		node_name = rospy.get_param("~node_name", "node_name")
-		print node_name
+		
 		rospy.init_node(node_name)
 		rospy.on_shutdown(self.cleanup)
 
-		self.node_name = node_name
+		self.node_name = rospy.get_param("~node_name")
+		print self.node_name
+
 		self.input_rgb_image = "input_rgb_image"
 		self.pre_processed_output_image = "pre_processed_image"
 		self.face_detect_output_image = "face_detect_output_image"
@@ -171,10 +172,13 @@ class Offloadable_FR_Node:
 
 	def scheduler_listener(self, scheduler_command):
 		if scheduler_command.node_name == self.node_name:
+
 			if scheduler_command.offload:
-				unsubscribe_node() # Must be implemented by each offloadable node
+				print "unsubcribed " + self.node_name
+				self.unsubscribe_node() # Must be implemented by each offloadable node
 			else:
-				resubscribe_node() # Must be implemented by each offloadable node
+				print "subcribed " + self.node_name
+				self.resubscribe_node() # Must be implemented by each offloadable node
 
 	def cleanup(self):
 		print "Shutting down vision node."

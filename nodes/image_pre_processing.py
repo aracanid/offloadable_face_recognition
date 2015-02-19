@@ -25,16 +25,19 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		self.marker_image = None
 
 		# Subscribe to the raw camera image topic and set the image processing callback to self.pre_processing()
-		self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
-		# A publisher to output the greyscale processed image
-		self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
-		# A subscriber for receiving scheduler commands
+		# self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
+		# # A publisher to output the greyscale processed image
+		# self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
+		# # A subscriber for receiving scheduler commands
+		# self.scheduler_sub = rospy.Subscriber(self.scheduler_commands, SchedulerCommand, self.scheduler_listener, queue_size=self.queue_size)
+		self.image_sub = None
+		self.pre_processed_image_pub = None 
 		self.scheduler_sub = rospy.Subscriber(self.scheduler_commands, SchedulerCommand, self.scheduler_listener, queue_size=self.queue_size)
-
+		
 		self.r = rospy.Rate(10)
 
 	def pre_processing(self, ros_image):
-
+		
 		# Convert the ROS Image to Opencv format using the convert_img_to_cv() helper function
 		cv_image = self.convert_img_to_cv(ros_image)
 
@@ -60,8 +63,6 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		except CvBridgeError, e:
 			print e
 
-
-
 	def unsubscribe_node(self):
 		# Function to unsubscribe a node from its topics and stop publishing data
 		self.image_sub.unregister()
@@ -71,6 +72,7 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		# Function to resubscribe and republish the nodes data
 		self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
 		self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
+
 
 
 def main(args):
