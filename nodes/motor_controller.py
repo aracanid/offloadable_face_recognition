@@ -16,7 +16,8 @@ class Motor_Controller:
 		self.MOTOR_COMMANDS = "motor_commands"
 		self.queue_size = 1
 
-		motor_server_ip = raw_input("Please enter the IP address of the motor_server: ")
+		#motor_server_ip = raw_input("Please enter the IP address of the motor_server: ")
+		motor_server_ip = "10.42.0.3"
 		
 		print "Initialising connection..."
 		self.initialise_connection(motor_server_ip)
@@ -32,11 +33,6 @@ class Motor_Controller:
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.socket.connect((ip_addr, self.PORT_NUMBER))
 
-
-	def test(self):
-		while True:
-			self.socket.send("yaw_right")
-			time.sleep(1)
 
 def main(self):
 	mc = Motor_Controller()

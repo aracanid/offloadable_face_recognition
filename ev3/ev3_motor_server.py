@@ -9,7 +9,7 @@ class Ev3_Motor_Server:
 		self.PORT_NUMBER = 5005
 		self.DATA_SIZE = 1024
 		
-		self.DEFAULT_PULSES_PER_SECOND = 30
+		self.DEFAULT_PULSES_PER_SECOND = 100
 		self.DEFAULT_POSITION_SP = 10
 		self.DEFAULT_NEGATIVE_POSITION_SP = -(self.DEFAULT_POSITION_SP)
 		self.DEFAULT_RUN_MODE = "position"
@@ -78,22 +78,23 @@ class Ev3_Motor_Server:
 		print "Connection address: ", addr
 
 		while True:
-			(data,addr) = conn.recv(self.DATA_SIZE) #data size
+			data = conn.recv(self.DATA_SIZE) #data size
 		
 			if data == self.YAW_LEFT:
-				print "YAW_LEFT command received"
-				yaw_left()		
+				self.yaw_left()		
 			elif data == self.YAW_RIGHT:
-				print "YAW_RIGHT command received"
-				yaw_right()
+				self.yaw_right()
 			else:
 				print "Unknown command received!"
 
 		conn.close()
 
 def main(self):
-	ev3ms = Ev3_Motor_Server()
-	ev3ms.process_input_command()
+	try:
+		ev3ms = Ev3_Motor_Server()
+		ev3ms.process_input_command()
+	except error:
+		print "Connection Error: " + error
 
 if __name__ == '__main__':
 	main(sys.argv)
