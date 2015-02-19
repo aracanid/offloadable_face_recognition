@@ -10,7 +10,7 @@ import threading
 from offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
-from offloadable_face_recognition.msg import FaceBox,SchedulerCommand
+from offloadable_face_recognition.msg import FaceBox,SchedulerCommand, MotorCommand
 from offloadable_face_recognition.srv import *
 
 class LK_Tracker(Offloadable_FR_Node):
@@ -35,6 +35,12 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.COLOUR_FACE_BOX = (0,0,255) # BLUE
 		self.COLOUR_FEATURE_POINTS = (0,255,0) # GREEN
 		self.COLOUR_NO_FACE_TEXT = (255,0,0) # RED
+
+		self.motor_commands = "motor_commands"
+
+		self.camera_threshold_tolerance = 30 # %percent
+		self.camera_edge_threshold = self.camera_x/100*self.camera_threshold_tolerance
+		self.camera_x, self.camera_y = self.camera_dimensions
 
 		self.abs_min_features = 6
 		self.min_features = 5
@@ -158,6 +164,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			self.expand_roi = self.expand_roi_init
 
 		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
+		self.update_motor_position(self.features)
 		cv_image = self.draw_graphics(cv_image, face_box, self.features)
 		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
@@ -167,10 +174,37 @@ class LK_Tracker(Offloadable_FR_Node):
 			except CvBridgeError, e:
 				print e
 
-	def update_motor_position(self, center_x, center_y):
+
+	#Should move this into the motor controller and simply have
+	#the motor controller recieve the current position?
+	def update_motor_position(self, features):
 		# take the center of the current ellipse as the mean point
 		# and sends the data to the motor controller
-		pass
+
+		# Compute the COG (center of gravity) of the cluster 
+		for point in features:
+			sum_x = sum_x + point[0]
+			sum_y = sum_y + point[1]
+		
+		center_x = sum_x / features_len
+		center_y = sum_y / features_len
+
+		left_threshold = self.camera_edge_threshold
+		right_threshold = self.camera_x - self.camera_threshold_tolerance
+		
+		motor_command = MotorCommand()
+
+		if center_x <= left_threshold:
+			motor_command.command = self.YAW_RIGHT
+			motor_command.angle = 20
+			self.motor_commands.publish(motor_command)
+		elif center_x >= right_threshold:
+			motor_command.command = self.YAW_LEFT
+			motor_command.angle = 20
+			self.motor_commands.publish(motor_command)
+		else:
+			print "Face was within limits"
+
 
 	def prune_features(self, prev_features):
 		# takes an array of feature coordinates and prunes them
@@ -253,6 +287,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
 			self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
 			self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
+			self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
 
 def main(args):
 	try:   

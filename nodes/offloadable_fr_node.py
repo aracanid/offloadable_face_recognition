@@ -31,6 +31,8 @@ class Offloadable_FR_Node:
 		self.scheduler_commands = "scheduler_commands"
 
 		self.rate = rospy.Rate(1) #Hz
+
+		self.camera_dimensions = (640,480)
 		
 		# Initialize a number of global variables 
 		self.image = None
@@ -109,6 +111,9 @@ class Offloadable_FR_Node:
 		self.flags = 0
 		
 		self.frame_count = 0
+
+		self.YAW_LEFT = "yaw_left"
+		self.YAW_RIGHT = "yaw_right"
 		
 		# Set the SURF parameters 
 		self.surf_hessian_quality = rospy.get_param("~surf_hessian_quality", 100)

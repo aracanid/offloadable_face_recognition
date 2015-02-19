@@ -1,2 +1,1 @@
-string node_name
-bool offload
+string motor_command
