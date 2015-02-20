@@ -160,7 +160,7 @@ class LK_Tracker(Offloadable_FR_Node):
 				self.detect_box = None
 				face_box = None
 
-		if (len(self.features) < self.abs_min_features) and (face_box is not None):
+		if (len(self.features) < self.abs_min_features) and (face_box is not None) and (feature_box is not None):
 			self.expand_roi = self.expand_roi_init * self.expand_roi
 			((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
 			self.features = self.add_features(ros_image, face_box, self.features)

@@ -34,7 +34,7 @@ class Motor_Controller:
 		self.motor_commands = rospy.Subscriber(self.MOTOR_COMMANDS, MotorCommand, self.motor_command_listener, queue_size=self.queue_size)
 
 	def motor_command_listener(self, motor_command):
-		self.send_command(motor_command.command, motor_command.angle)
+		self.send_command(motor_command.motor_command, motor_command.angle)
 	
 	def initialise_connection(self, ip_addr):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

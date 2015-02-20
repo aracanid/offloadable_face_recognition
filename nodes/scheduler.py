@@ -62,6 +62,9 @@ class Scheduler:
 			self.isAutomatic = command.type
 			self.percentage = command.percentage
 
+
+	# Separate cpu_usage into another thread
+	
 	def offloading_scheduler(self):
 		try:
 			while True:
