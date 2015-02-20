@@ -11,6 +11,10 @@ class Motor_Controller:
 
 	def __init__(self):
 
+		node_name = "motor_controller"
+
+		rospy.init_node(node_name)
+
 		self.PORT_NUMBER = 5004
 		self.DATA_SIZE = 1024
 		self.socket = None

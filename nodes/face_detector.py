@@ -46,19 +46,19 @@ class Face_Detector(Offloadable_FR_Node):
 		self.scheduler_sub = rospy.Subscriber(self.scheduler_commands, SchedulerCommand, self.scheduler_listener, queue_size=self.queue_size)
 
 		# A publisher to output face coordinates and size 
-		self.output_face_box_pub = rospy.Publisher(self.face_box_coordinates, FaceBox, queue_size=self.queue_size)  ###need to change this so that it sends an array
+		#self.output_face_box_pub = rospy.Publisher(self.face_box_coordinates, FaceBox, queue_size=self.queue_size)  ###need to change this so that it sends an array
 
 		# # # A publisher to output the image used for marker information on top of the output image
 		# # self.marker_image_pub = rospy.Publisher(self.marker_image_output, Image, queue_size=self.queue_size)
 
 		# # A publisher to output the final image and display it
-		self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)  ###need to change this so that it sends an array
+		#self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)  ###need to change this so that it sends an array
 
 		# # A publisher to output the frame in which the face was detected
-		self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
+		#self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
 
 		# # Subscribe to the preprocessed image output and set the detect_face as the callback
-		self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
+		#self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
 
 	def detect_face(self, ros_image):
 
@@ -131,10 +131,13 @@ class Face_Detector(Offloadable_FR_Node):
 	# Abstract method implementations to allow scheduler commands to be processed
 	def unsubscribe_node(self):
 		# Function to unsubscribe a node from its topics and stop publishing data
-		self.output_face_box_pub.unregister()
-		self.output_image_pub.unregister()
-		self.face_detect_output_image_pub.unregister()
-		self.image_sub.unregister()
+		try:
+			self.output_face_box_pub.unregister()
+			self.output_image_pub.unregister()
+			self.face_detect_output_image_pub.unregister()
+			self.image_sub.unregister()
+		except:
+			print "Error unsubscribing nodes"
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data

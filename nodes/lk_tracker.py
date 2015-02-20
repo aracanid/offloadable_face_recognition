@@ -51,6 +51,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.feature_matrix = None
 		self.marker_image = None
 		self.pre_processed_image = None
+		self.motor_commands_pub = None
 
 		self.isOffloaded = True
 
@@ -67,19 +68,22 @@ class LK_Tracker(Offloadable_FR_Node):
 						  criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 		
 		self.scheduler_sub = rospy.Subscriber(self.scheduler_commands, SchedulerCommand, self.scheduler_listener, queue_size=self.queue_size)
-		# self.output_image_pub = None
-		# self.image_sub = None
-		# self.face_box_sub = None
+		self.output_image_pub = None
+		self.image_sub = None
+		self.face_box_sub = None
+		self.motor_commands_pub = None
+
+		#self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
 
 		# A publisher to output the display image back to a ROS topic 
-		self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
+		#self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
 
 		# # Subscribe to the raw camera image topic and set the image processing callback 
-		self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
-		self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
+		#self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
+		#self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 
 		# Subscribe to the raw camera image topic and set the image processing callback to self.pre_processing()
-		# image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
+		#image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
 		# Subscribe to the preprocessed image output and set the detect_face as the callback
 		#image_sub = rospy.Subscriber(self.marker_image_output, Image, self.update_marker_image, queue_size=self.queue_size)
 
@@ -156,7 +160,7 @@ class LK_Tracker(Offloadable_FR_Node):
 				self.detect_box = None
 				face_box = None
 
-		if (len(self.features) < self.abs_min_features) and (feature_box is not None):
+		if (len(self.features) < self.abs_min_features) and (face_box is not None):
 			self.expand_roi = self.expand_roi_init * self.expand_roi
 			((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
 			self.features = self.add_features(ros_image, face_box, self.features)
@@ -164,7 +168,9 @@ class LK_Tracker(Offloadable_FR_Node):
 			self.expand_roi = self.expand_roi_init
 
 		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
+
 		self.update_motor_position(self.features)
+
 		cv_image = self.draw_graphics(cv_image, face_box, self.features)
 		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
@@ -180,9 +186,10 @@ class LK_Tracker(Offloadable_FR_Node):
 	def update_motor_position(self, features):
 		# take the center of the current ellipse as the mean point
 		# and sends the data to the motor controller
-
+		features_len = len(features)
 		# Compute the COG (center of gravity) of the cluster 
-		if len(features > 0):
+		if features_len > 0:
+			sum_x, sum_y = 0, 0
 			for point in features:
 				sum_x = sum_x + point[0]
 				sum_y = sum_y + point[1]
@@ -196,13 +203,13 @@ class LK_Tracker(Offloadable_FR_Node):
 			motor_command = MotorCommand()
 
 			if center_x <= left_threshold:
-				motor_command.command = self.YAW_RIGHT
+				motor_command.motor_command = self.YAW_RIGHT
 				motor_command.angle = 20
-				self.motor_commands.publish(motor_command)
+				self.motor_commands_pub.publish(motor_command)
 			elif center_x >= right_threshold:
-				motor_command.command = self.YAW_LEFT
+				motor_command.motor_command = self.YAW_LEFT
 				motor_command.angle = 20
-				self.motor_commands.publish(motor_command)
+				self.motor_commands_pub.publish(motor_command)
 			else:
 				print "Face was within limits"
 
@@ -220,13 +227,15 @@ class LK_Tracker(Offloadable_FR_Node):
 				features = self.convert_to_tuple_array(response.features)
 				score = response.score
 
+				return features, score
+
 			except rospy.ServiceException as exc:
 				self.features = []
 				score = self.BAD_CLUSTER
 				print("Service did not process request: " + str(exc))
 					# Add features if the number is getting too low
 
-			return features, score
+			
 
 	def add_features(self, ros_image, face_box, prev_features):
 		# takes an image, a track box and an array of feature coordinates
@@ -238,11 +247,14 @@ class LK_Tracker(Offloadable_FR_Node):
 		try:
 			service_response = add_features(self.convert_to_feature_coordinates(prev_features), face_box, ros_image)
 			features = self.convert_to_tuple_array(service_response.features)
+
+			return features
+
 		except rospy.ServiceException as exc:
 			features = []
 			print("Service did not process request: " + str(exc))
 
-		return features
+		
 
 	def draw_graphics(self, cv_image, face_box, features):
 		# take input image, check for whether there is a facebox or feature box
@@ -278,9 +290,13 @@ class LK_Tracker(Offloadable_FR_Node):
 	def unsubscribe_node(self):
 		# Function to unsubscribe a node from its topics and stop publishing data
 		with self.subscriber_lock:
-			self.output_image_pub.unregister()
-			self.image_sub.unregister()
-			self.face_box_sub.unregister()
+			try:
+				self.output_image_pub.unregister()
+				self.image_sub.unregister()
+				self.face_box_sub.unregister()
+				self.motor_commands_pub.unregister()
+			except:
+				print "Error unsubscribing nodes"
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data

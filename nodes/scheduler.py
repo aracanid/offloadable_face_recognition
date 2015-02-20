@@ -52,6 +52,8 @@ class Scheduler:
 
 		self.initialise_nodes(True)
 
+		self.init_rate.sleep()
+
 		#spin the node
 		self.offloading_scheduler()
 
@@ -148,13 +150,16 @@ class Scheduler:
 		self.rate.sleep()
 		if isLocal == True:
 			self.offload_node(self.rpi_pre_processing_node, False)
+			self.rate.sleep()
 			self.offload_node(self.rpi_face_detection_node, False)
+			self.rate.sleep()
 			self.offload_node(self.rpi_lk_tracker_node, False)
+			self.rate.sleep()
 			self.set_nodes_status(self.NODE_LOCAL)
-		else:
-			self.offload_node(self.pc_pre_processing_node, self.OFFLOAD_TO_PC)
-			self.offload_node(self.pc_face_detection_node, self.OFFLOAD_TO_PC)
-			self.offload_node(self.pc_lk_tracker_node, self.OFFLOAD_TO_PC)
+
+			self.offload_node(self.pc_pre_processing_node, True)
+			self.offload_node(self.pc_face_detection_node, True)
+			self.offload_node(self.pc_lk_tracker_node, True)
 			self.set_nodes_status(self.NODE_OFFLOADED)
 
 	def set_nodes_status(self, state):
