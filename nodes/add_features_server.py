@@ -41,17 +41,17 @@ class Add_Features_Server(Offloadable_FR_Node):
 		track_box = request.track_box
 
 		grey = self.convert_img_to_cv(request.ros_image)
-		im_height, im_width = grey.shape
+		im_width, im_height = grey.shape
 
 		#  Get the initial features to track 
 				
 		#  Create a mask image to be used to select the tracked points 
-		mask = np.zeros((im_height,im_width,1), np.uint8)
+		mask = np.zeros((im_width, im_height,1), np.uint8)
 		
 		# Get the center of the track box (type CvRect) so we can create the equivalent CvBox2D (rotated rectangle) required by EllipseBox below. 
 		center_x = int(track_box.x + track_box.width / 2)
 		center_y = int(track_box.y + track_box.height / 2)
-		roi_box = ((center_x, center_y), (track_box.height, track_box.width), 0)
+		roi_box = ((center_x, center_y), (track_box.width, track_box.height), 0)
 		
 		# Create a filled white ellipse within the track_box to define the ROI. 
 		cv2.ellipse(mask, roi_box, (255,255, 255), self.CV_FILLED)  

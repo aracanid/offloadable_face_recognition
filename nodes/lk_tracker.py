@@ -35,6 +35,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.COLOUR_FACE_BOX = (0,0,255) # BLUE
 		self.COLOUR_FEATURE_POINTS = (0,255,0) # GREEN
 		self.COLOUR_NO_FACE_TEXT = (255,0,0) # RED
+		self.face_detected = False
 
 		self.motor_commands = "motor_commands"
 
@@ -53,7 +54,8 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.pre_processed_image = None
 		self.motor_commands_pub = None
 
-		self.isOffloaded = True
+		self.face_detected = True
+		self.is_offloaded = None
 
 		# # params for ShiTomasi corner detection
 		# self.feature_params = dict( maxCorners = self.MAX_COUNT,
@@ -72,7 +74,8 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.image_sub = None
 		self.face_box_sub = None
 		self.motor_commands_pub = None
-
+		#self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
+		#self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 		#self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
 
 		# A publisher to output the display image back to a ROS topic 
@@ -90,9 +93,11 @@ class LK_Tracker(Offloadable_FR_Node):
 	def update_face_box(self, face_box):
 		with self.face_box_lock:
 			self.face_box = face_box
+			self.face_detected = True
 
 	def track_lk(self, ros_image):
 
+		original_image = ros_image
 		cv_image = self.convert_img_to_cv(ros_image)
 		im_width, im_height = cv_image.shape
 
@@ -100,23 +105,23 @@ class LK_Tracker(Offloadable_FR_Node):
 			face_box = self.face_box
 
 		# Switch between the incoming image streams depending on whether we have features or not
-		if len(self.features) > 0 and self.isOffloaded == False:
+		if self.features!=[] and self.face_detected == False:
 			with self.subscriber_lock:
-				self.image_sub.unregister()
-				self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
+		# 		#self.image_sub.unregister()
+		# 		#self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
 				self.face_box_sub.unregister()
-				self.isOffloaded = True
-				print "switched topic to tracking only"
+				self.face_detected = True
+		# 		print "switched topic to tracking only"
 
-		elif self.isOffloaded == True and len(self.features) == 0:
+		elif self.face_detected == True and self.features==[]:
 			with self.subscriber_lock:
-				self.image_sub.unregister()
-				self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
-				#self.face_box_sub.unregister()
+		# 		#self.image_sub.unregister()
+		# 		#self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
+		# 		#self.face_box_sub.unregister()
 				self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 
-				self.isOffloaded = False
-				print "switched topic back to face detector"
+				self.face_detected = False
+		# 		print "switched topic back to face detector"
 
 		feature_box = None
 		
@@ -129,7 +134,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.marker_image = np.zeros((im_width,im_height,3), np.uint8)
 		self.grey = cv_image
 
-		if face_box and len(self.features) > 0:
+		if face_box and self.features != []:
 			self.features, status, track_error = cv2.calcOpticalFlowPyrLK(self.prev_grey, self.grey, np.asarray(self.features,dtype="float32"), None, **self.lk_params)
 
 			#  Keep only high status points 
@@ -138,8 +143,8 @@ class LK_Tracker(Offloadable_FR_Node):
 		elif face_box:
 			self.features = self.add_features(ros_image, face_box, self.features)
 			# Since the detect box is larger than the actual face or desired patch, shrink the number of features by 10% 
-			#self.min_features = int(len(self.features) * 0.9)
-			#self.abs_min_features = int(0.5 * self.min_features)
+			self.min_features = int(len(self.features) * 0.9)
+			self.abs_min_features = int(0.5 * self.min_features)
 		# Swapping the images 
 		self.prev_grey, self.grey = self.grey, self.prev_grey
 		
@@ -160,12 +165,14 @@ class LK_Tracker(Offloadable_FR_Node):
 				self.detect_box = None
 				face_box = None
 
-		if (len(self.features) < self.abs_min_features) and (face_box is not None) and (feature_box is not None):
-			self.expand_roi = self.expand_roi_init * self.expand_roi
-			((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
-			self.features = self.add_features(ros_image, face_box, self.features)
-		else:
-			self.expand_roi = self.expand_roi_init
+			if (len(self.features) < self.abs_min_features) and (face_box is not None) and (feature_box is not None):
+				self.expand_roi = self.expand_roi_init * self.expand_roi
+				((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
+				face_box.width=face_box.width*self.expand_roi
+				face_box.height=face_box.height*self.expand_roi
+				self.features = self.add_features(ros_image, face_box, self.features)
+			else:
+				self.expand_roi = self.expand_roi_init
 
 		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
 
@@ -174,11 +181,17 @@ class LK_Tracker(Offloadable_FR_Node):
 		cv_image = self.draw_graphics(cv_image, face_box, self.features)
 		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
-		if feature_box is not None and len(self.features) > 0:
+		if len(self.features) > 0:
 			try:
 				self.output_image_pub.publish(ros_image)
 			except CvBridgeError, e:
 				print e
+		elif self.is_offloaded == False:
+			try:
+				self.output_image_pub.publish(original_image)
+			except CvBridgeError, e:
+				print e
+
 
 
 	#Should move this into the motor controller and simply have
@@ -206,12 +219,11 @@ class LK_Tracker(Offloadable_FR_Node):
 				motor_command.motor_command = self.YAW_RIGHT
 				motor_command.angle = 20
 				self.motor_commands_pub.publish(motor_command)
-			elif center_x >= right_threshold:
+
+			if center_x >= right_threshold:
 				motor_command.motor_command = self.YAW_LEFT
 				motor_command.angle = 20
 				self.motor_commands_pub.publish(motor_command)
-			else:
-				print "Face was within limits"
 
 
 	def prune_features(self, prev_features):
@@ -269,40 +281,30 @@ class LK_Tracker(Offloadable_FR_Node):
 			cv2.rectangle(cv_image, pt1, pt2, self.COLOUR_FACE_BOX, thickness=2)
 
 		# Otherwise if there are already features then draw the feature points as points on the face
-		elif len(features) > 0:
-			i = 0
+		if len(features) > 0:
 			for the_point in features:
-				cv2.circle(cv_image, (int(the_point[0]), int(the_point[1])), 1, self.COLOUR_FEATURE_POINTS,self.CV_FILLED)
+				cv2.circle(cv_image, (int(the_point[0]), int(the_point[1])), 2, self.COLOUR_FEATURE_POINTS,self.CV_FILLED)
 				# try:
 				# 	feature_matrix[0][i] = (int(the_point[0]), int(the_point[1]))
 				# except:
 				# 	pass
 				# i = i + 1
 
-		# else:
-		# 	text_scale = 0.4 * im_width / 160. + 0.1
-		# 	text_pos = (100, im_height-100)
-		# 	cv2.putText(cv_image, self.NO_IMAGE_TEXT, text_pos, cv2.FONT_HERSHEY_COMPLEX, text_scale, self.COLOUR_NO_FACE_TEXT, thickness=4)
-
-
 		return cv_image
 
 	def unsubscribe_node(self):
 		# Function to unsubscribe a node from its topics and stop publishing data
 		with self.subscriber_lock:
-			try:
-				self.output_image_pub.unregister()
-				self.image_sub.unregister()
-				self.face_box_sub.unregister()
-				self.motor_commands_pub.unregister()
-			except:
-				print "Error unsubscribing nodes"
+			self.is_offloaded = True
+			self.face_box_sub.unregister()
+			#self.output_image_pub.unregister()
+			#self.motor_commands_pub.unregister()
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
 		with self.subscriber_lock:
+			self.is_offloaded = False
 			self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
-			self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
 			self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 			self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
 

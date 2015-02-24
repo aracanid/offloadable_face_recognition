@@ -69,17 +69,17 @@ class Face_Detector(Offloadable_FR_Node):
 
 		# Create a single scaled down image
 		if self.small_image is None:
-			self.small_image = np.zeros((im_width/self.IMAGE_SCALE, im_height/self.IMAGE_SCALE, 1), np.uint8)
+			self.small_image = np.zeros((int(im_width/self.IMAGE_SCALE), int(im_height/self.IMAGE_SCALE), 1), np.uint8)
 			# self.marker_image = np.zeros((im_width, im_height, 3), np.uint8)
 
 		# Scale input image for faster processing using the scaled image
-		self.small_image = cv2.resize(cv_image, (im_width/self.IMAGE_SCALE, im_height/self.IMAGE_SCALE), interpolation=cv2.INTER_LINEAR)
+		self.small_image = cv2.resize(cv_image, (int(im_width/self.IMAGE_SCALE), int(im_height/self.IMAGE_SCALE)), interpolation=cv2.INTER_LINEAR)
 		
 		# First check one of the frontal templates 
 		if self.cascade_frontal_alt:
 			faces = self.haar_detector(self.cascade_frontal_alt)
 		
-		# If a face is not found, try the profile template
+		#If face is not found, try the profile template
 		if len(faces) is 0:
 			if self.cascade_profile:
 				faces = self.haar_detector(self.cascade_profile)
@@ -95,11 +95,11 @@ class Face_Detector(Offloadable_FR_Node):
 			if face_box is None:
 				print "noface"
 				cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
-				self.output_image_pub.publish(self.convert_cv_to_img(cv_image, encoding="bgr8"))
+				#self.output_image_pub.publish(self.convert_cv_to_img(cv_image, encoding="bgr8"))
 			else:
 				print "face"
 				self.output_face_box_pub.publish(face_box)
-				self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
+				#self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
 
 		except CvBridgeError, e:
 			print e
@@ -137,7 +137,7 @@ class Face_Detector(Offloadable_FR_Node):
 			self.face_detect_output_image_pub.unregister()
 			self.image_sub.unregister()
 		except:
-			print "Error unsubscribing nodes"
+			print "Error unsubscribing nodes" + self.node_name
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
