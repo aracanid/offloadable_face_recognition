@@ -9,6 +9,8 @@ from sensor_msgs.msg import Image, RegionOfInterest, CameraInfo
 from geometry_msgs.msg import PointStamped
 from offloadable_face_recognition.msg import *
 from cv_bridge import CvBridge, CvBridgeError
+
+import threading
 import abc
 import time
 
@@ -122,6 +124,7 @@ class Offloadable_FR_Node:
 
 
 		self.is_offloaded = True
+		self.offloading_lock = threading.Lock()
 
 
 		__metaclass__ = abc.ABCMeta

@@ -96,102 +96,108 @@ class LK_Tracker(Offloadable_FR_Node):
 
 	def track_lk(self, ros_image):
 
-		if self.is_offloaded == False:
+		print "tracklk "  + self.node_name
 
-			original_image = ros_image
-			cv_image = self.convert_img_to_cv(ros_image)
-			im_width, im_height = cv_image.shape
+		original_image = ros_image
+		cv_image = self.convert_img_to_cv(ros_image)
+		im_width, im_height = cv_image.shape
 
-			with self.face_box_lock:
-				face_box = self.face_box
+		with self.face_box_lock:
+			face_box = self.face_box
 
-			# Switch between the incoming image streams depending on whether we have features or not
-			if self.features!=[] and self.face_detected == False:
-				with self.subscriber_lock:
-			# 		#self.image_sub.unregister()
-			# 		#self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
-					self.face_box_sub.unregister()
-					self.face_detected = True
-			# 		print "switched topic to tracking only"
+		# Switch between the incoming image streams depending on whether we have features or not
+		if self.features!=[] and self.face_detected == False:
+			with self.offloading_lock:
+		# 		#self.image_sub.unregister()
+		# 		#self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
+				self.face_box_sub.unregister()
+				self.face_detected = True
+		# 		print "switched topic to tracking only"
 
-			elif self.face_detected == True and self.features==[]:
-				with self.subscriber_lock:
-			# 		#self.image_sub.unregister()
-			# 		#self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
-			# 		#self.face_box_sub.unregister()
-					self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
+		elif self.face_detected == True and self.features==[]:
+			with self.offloading_lock:
+		# 		#self.image_sub.unregister()
+		# 		#self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
+		# 		#self.face_box_sub.unregister()
+				self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 
-					self.face_detected = False
-			# 		print "switched topic back to face detector"
+				self.face_detected = False
+		# 		print "switched topic back to face detector"
 
-			feature_box = None
-			
-			#  Initialize intermediate images if necessary 
-			if self.grey is None:
-				self.grey = np.zeros((im_width,im_height,1), np.uint8)
-				self.prev_grey = np.zeros((im_width,im_height,1), np.uint8)
+		feature_box = None
+		
+		#  Initialize intermediate images if necessary 
+		if self.grey is None:
+			self.grey = np.zeros((im_width,im_height,1), np.uint8)
+			self.prev_grey = np.zeros((im_width,im_height,1), np.uint8)
+			self.features = []
+		
+		self.marker_image = np.zeros((im_width,im_height,3), np.uint8)
+		self.grey = cv_image
+
+		if face_box and self.features != []:
+			self.features, status, track_error = cv2.calcOpticalFlowPyrLK(self.prev_grey, self.grey, np.asarray(self.features,dtype="float32"), None, **self.lk_params)
+
+			#  Keep only high status points 
+			self.features = [ p for (st,p) in zip(status, self.features) if st]  
+
+		elif face_box:
+			self.features = self.add_features(ros_image, face_box, self.features)
+			# Since the detect box is larger than the actual face or desired patch, shrink the number of features by 10% 
+			self.min_features = int(len(self.features) * 0.9)
+			self.abs_min_features = int(0.5 * self.min_features)
+		# Swapping the images 
+		self.prev_grey, self.grey = self.grey, self.prev_grey
+		
+		# If we have some features... 
+		if len(self.features) > 0:
+			# The FitEllipse2 function below requires us to convert the feature array into a CvMat matrix 
+			# Draw the best fit ellipse around the feature points 
+			if len(self.features) > self.min_features:
+				self.feature_matrix = np.float32([p for p in self.features]).reshape(-1, 1, 2)  
+				feature_box = cv2.fitEllipse(self.feature_matrix)
+			else:
+				feature_box = None
+
+			self.features, score = self.prune_features(self.features)
+
+			if score == self.BAD_CLUSTER:
 				self.features = []
-			
-			self.marker_image = np.zeros((im_width,im_height,3), np.uint8)
-			self.grey = cv_image
+				self.detect_box = None
+				face_box = None
 
-			if face_box and self.features != []:
-				self.features, status, track_error = cv2.calcOpticalFlowPyrLK(self.prev_grey, self.grey, np.asarray(self.features,dtype="float32"), None, **self.lk_params)
-
-				#  Keep only high status points 
-				self.features = [ p for (st,p) in zip(status, self.features) if st]  
-
-			elif face_box:
+			if (len(self.features) < self.abs_min_features) and (face_box is not None) and (feature_box is not None):
+				self.expand_roi = self.expand_roi_init * self.expand_roi
+				((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
+				face_box.width=face_box.width*self.expand_roi
+				face_box.height=face_box.height*self.expand_roi
 				self.features = self.add_features(ros_image, face_box, self.features)
-				# Since the detect box is larger than the actual face or desired patch, shrink the number of features by 10% 
-				self.min_features = int(len(self.features) * 0.9)
-				self.abs_min_features = int(0.5 * self.min_features)
-			# Swapping the images 
-			self.prev_grey, self.grey = self.grey, self.prev_grey
-			
-			# If we have some features... 
-			if len(self.features) > 0:
-				# The FitEllipse2 function below requires us to convert the feature array into a CvMat matrix 
-				# Draw the best fit ellipse around the feature points 
-				if len(self.features) > self.min_features:
-					self.feature_matrix = np.float32([p for p in self.features]).reshape(-1, 1, 2)  
-					feature_box = cv2.fitEllipse(self.feature_matrix)
-				else:
-					feature_box = None
+			else:
+				self.expand_roi = self.expand_roi_init
 
-				self.features, score = self.prune_features(self.features)
+		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
 
-				if score == self.BAD_CLUSTER:
-					self.features = []
-					self.detect_box = None
-					face_box = None
+		self.update_motor_position(self.features)
 
-				if (len(self.features) < self.abs_min_features) and (face_box is not None) and (feature_box is not None):
-					self.expand_roi = self.expand_roi_init * self.expand_roi
-					((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
-					face_box.width=face_box.width*self.expand_roi
-					face_box.height=face_box.height*self.expand_roi
-					self.features = self.add_features(ros_image, face_box, self.features)
-				else:
-					self.expand_roi = self.expand_roi_init
+		cv_image = self.draw_graphics(cv_image, face_box, self.features)
+		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
-			cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
+		print "b"
 
-			self.update_motor_position(self.features)
-
-			cv_image = self.draw_graphics(cv_image, face_box, self.features)
-			ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
-
-			if len(self.features) > 0:
-				try:
-					self.output_image_pub.publish(ros_image)
-				except CvBridgeError, e:
-					print e
-			elif self.is_offloaded == False:
-				try:
-					self.output_image_pub.publish(original_image)
-				except CvBridgeError, e:
-					print e
+		if len(self.features) > 0:
+			try:
+				with self.offloading_lock:
+					if self.is_offloaded == False:
+						self.output_image_pub.publish(ros_image)
+						print "lk publishing features"
+			except CvBridgeError, e:
+				print e
+		else:
+			try:
+				print "lk publishing default"
+				self.output_image_pub.publish(original_image)
+			except CvBridgeError, e:
+				print e
 
 
 
@@ -296,9 +302,9 @@ class LK_Tracker(Offloadable_FR_Node):
 	def unsubscribe_node(self):
 		# Function to unsubscribe a node from its topics and stop publishing data
 		try:
-			with self.subscriber_lock:
-				self.is_offloaded = True
-				if self.face_detected ==  False:
+			with self.offloading_lock:
+				if self.is_offloaded == False and self.face_detected ==  False:
+					self.is_offloaded = True
 					self.face_box_sub.unregister()
 					self.output_image_pub = None
 					self.motor_commands_pub = None
@@ -306,14 +312,14 @@ class LK_Tracker(Offloadable_FR_Node):
 					#self.motor_commands_pub.unregister()
 		except e:
 			print e
+
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
-		with self.subscriber_lock:
-			self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
-			self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
-			self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
+		self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
+		self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
+		self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
 
-			self.is_offloaded = False
+		self.is_offloaded = False
 
 def main(args):
 	try:   
