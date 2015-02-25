@@ -96,8 +96,6 @@ class LK_Tracker(Offloadable_FR_Node):
 
 	def track_lk(self, ros_image):
 
-		print "tracklk "  + self.node_name
-
 		original_image = ros_image
 		cv_image = self.convert_img_to_cv(ros_image)
 		im_width, im_height = cv_image.shape
@@ -153,7 +151,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		if len(self.features) > 0:
 			# The FitEllipse2 function below requires us to convert the feature array into a CvMat matrix 
 			# Draw the best fit ellipse around the feature points 
-			if len(self.features) > self.min_features:
+			if len(self.features) > 6:
 				self.feature_matrix = np.float32([p for p in self.features]).reshape(-1, 1, 2)  
 				feature_box = cv2.fitEllipse(self.feature_matrix)
 			else:
@@ -182,22 +180,15 @@ class LK_Tracker(Offloadable_FR_Node):
 		cv_image = self.draw_graphics(cv_image, face_box, self.features)
 		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
-		print "b"
-
-		if len(self.features) > 0:
-			try:
-				with self.offloading_lock:
-					if self.is_offloaded == False:
+		with self.offloading_lock:
+			if self.is_offloaded == False:
+				try:
+					if len(self.features) > 0:
 						self.output_image_pub.publish(ros_image)
-						print "lk publishing features"
-			except CvBridgeError, e:
-				print e
-		else:
-			try:
-				print "lk publishing default"
-				self.output_image_pub.publish(original_image)
-			except CvBridgeError, e:
-				print e
+					else:
+						self.output_image_pub.publish(original_image)
+				except CvBridgeError, e:
+					print e
 
 
 
@@ -283,8 +274,8 @@ class LK_Tracker(Offloadable_FR_Node):
 
 		# If there is a face box then draw a rectange around the region the face occupies
 		if face_box:
-			pt1 = (face_box.x, face_box.y)
-			pt2 = (face_box.x+face_box.width, face_box.y+face_box.height)
+			pt1 = (int(face_box.x), int(face_box.y))
+			pt2 = (int(face_box.x+face_box.width), int(face_box.y+face_box.height))
 			cv2.rectangle(cv_image, pt1, pt2, self.COLOUR_FACE_BOX, thickness=2)
 
 		# Otherwise if there are already features then draw the feature points as points on the face
@@ -308,6 +299,7 @@ class LK_Tracker(Offloadable_FR_Node):
 					self.face_box_sub.unregister()
 					self.output_image_pub = None
 					self.motor_commands_pub = None
+					self.image_sub.unregister()
 					#self.output_image_pub.unregister()
 					#self.motor_commands_pub.unregister()
 		except e:
@@ -315,11 +307,13 @@ class LK_Tracker(Offloadable_FR_Node):
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
-		self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
-		self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
-		self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
+		with self.offloading_lock:
+			self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
+			self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
+			self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
+			self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
 
-		self.is_offloaded = False
+			self.is_offloaded = False
 
 def main(args):
 	try:   
