@@ -120,6 +120,10 @@ class Offloadable_FR_Node:
 
 		self.queue_size = 1
 
+
+		self.is_offloaded = True
+
+
 		__metaclass__ = abc.ABCMeta
 
 		rate = rospy.Rate(10) # 10hz

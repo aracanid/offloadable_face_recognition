@@ -62,47 +62,47 @@ class Face_Detector(Offloadable_FR_Node):
 
 	def detect_face(self, ros_image):
 
-		# Convert the ROS Image to Opencv format using the convert_img_to_cv() helper function
-		cv_image = self.convert_img_to_cv(ros_image)
+		if self.is_offloaded == False:
 
-		im_width, im_height = cv_image.shape
+			# Convert the ROS Image to Opencv format using the convert_img_to_cv() helper function
+			cv_image = self.convert_img_to_cv(ros_image)
 
-		# Create a single scaled down image
-		if self.small_image is None:
-			self.small_image = np.zeros((int(im_width/self.IMAGE_SCALE), int(im_height/self.IMAGE_SCALE), 1), np.uint8)
-			# self.marker_image = np.zeros((im_width, im_height, 3), np.uint8)
+			im_width, im_height = cv_image.shape
 
-		# Scale input image for faster processing using the scaled image
-		self.small_image = cv2.resize(cv_image, (int(im_width/self.IMAGE_SCALE), int(im_height/self.IMAGE_SCALE)), interpolation=cv2.INTER_LINEAR)
-		
-		# First check one of the frontal templates 
-		if self.cascade_frontal_alt:
-			faces = self.haar_detector(self.cascade_frontal_alt)
-		
-		#If face is not found, try the profile template
-		if len(faces) is 0:
-			if self.cascade_profile:
-				faces = self.haar_detector(self.cascade_profile)
+			# Create a single scaled down image
+			if self.small_image is None:
+				self.small_image = np.zeros((int(im_width/self.IMAGE_SCALE), int(im_height/self.IMAGE_SCALE), 1), np.uint8)
+				# self.marker_image = np.zeros((im_width, im_height, 3), np.uint8)
+
+			# Scale input image for faster processing using the scaled image
+			self.small_image = cv2.resize(cv_image, (int(im_width/self.IMAGE_SCALE), int(im_height/self.IMAGE_SCALE)), interpolation=cv2.INTER_LINEAR)
+			
+			# First check one of the frontal templates 
+			if self.cascade_frontal_alt:
+				faces = self.haar_detector(self.cascade_frontal_alt)
+			
+			#If face is not found, try the profile template
 			if len(faces) is 0:
-				# If that fails, check a different frontal profile 
-				if self.cascade_frontal_alt2:
-					faces = self.haar_detector(self.cascade_frontal_alt2)
+				if self.cascade_profile:
+					faces = self.haar_detector(self.cascade_profile)
+				if len(faces) is 0:
+					# If that fails, check a different frontal profile 
+					if self.cascade_frontal_alt2:
+						faces = self.haar_detector(self.cascade_frontal_alt2)
 
-		# If we have found faces, generate a FaceBox message from them
-		face_box = self.generate_face_box(faces)
+			# If we have found faces, generate a FaceBox message from them
+			face_box = self.generate_face_box(faces)
 
-		try:
-			if face_box is None:
-				print "noface"
-				cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
-				#self.output_image_pub.publish(self.convert_cv_to_img(cv_image, encoding="bgr8"))
-			else:
-				print "face"
-				self.output_face_box_pub.publish(face_box)
-				#self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
+			try:
+				if face_box is None:
+					cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
+					#self.output_image_pub.publish(self.convert_cv_to_img(cv_image, encoding="bgr8"))
+				else:
+					self.output_face_box_pub.publish(face_box)
+					#self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
 
-		except CvBridgeError, e:
-			print e
+			except CvBridgeError, e:
+				print e
 
 	# Fuction to generate a list of face objects when given a classifier template
 	def haar_detector(self, classifier):
@@ -130,21 +130,23 @@ class Face_Detector(Offloadable_FR_Node):
 
 	# Abstract method implementations to allow scheduler commands to be processed
 	def unsubscribe_node(self):
+		self.is_offloaded = True
 		# Function to unsubscribe a node from its topics and stop publishing data
-		try:
-			self.output_face_box_pub.unregister()
-			self.output_image_pub.unregister()
-			self.face_detect_output_image_pub.unregister()
-			self.image_sub.unregister()
-		except:
-			print "Error unsubscribing nodes" + self.node_name
+		# self.output_image_pub.unregister()
+		# self.face_detect_output_image_pub.shutdown()
+		self.image_sub.unregister()
+		self.output_face_box_pub = None
+
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
 		self.output_face_box_pub = rospy.Publisher(self.face_box_coordinates, FaceBox, queue_size=self.queue_size)
-		self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size) 
-		self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
+		#self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size) 
+		#self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
 		self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
+
+		self.is_offloaded = False
+
 
 
 def main(args):

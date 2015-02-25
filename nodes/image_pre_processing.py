@@ -37,44 +37,47 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		self.r = rospy.Rate(10)
 
 	def pre_processing(self, ros_image):
-		
-		# Convert the ROS Image to Opencv format using the convert_img_to_cv() helper function
-		cv_image = self.convert_img_to_cv(ros_image)
 
-		if self.pre_processed_image is None:
-			self.pre_processed_image = np.zeros(cv_image.shape, np.uint8)
+		if self.is_offloaded == False:
+			
+			# Convert the ROS Image to Opencv format using the convert_img_to_cv() helper function
+			cv_image = self.convert_img_to_cv(ros_image)
 
-		# Create a single channel greyscale image
-		if self.grey is None:  
-			(im_width, im_height, im_depth) = cv_image.shape
-			self.grey = np.zeros((im_width,im_height,1), np.uint8)
+			if self.pre_processed_image is None:
+				self.pre_processed_image = np.zeros(cv_image.shape, np.uint8)
 
-		# Convert input image from color to greyscale
-		self.grey = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+			# Create a single channel greyscale image
+			if self.grey is None:  
+				(im_width, im_height, im_depth) = cv_image.shape
+				self.grey = np.zeros((im_width,im_height,1), np.uint8)
 
-		# Equalize the histogram to reduce lighting effects 
-		self.grey = cv2.equalizeHist(self.grey, self.grey)
+			# Convert input image from color to greyscale
+			self.grey = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
 
-		# Convert back to ROS Image from Opencv formatf
-		pre_processed_image = self.convert_cv_to_img(self.grey)
+			# Equalize the histogram to reduce lighting effects 
+			self.grey = cv2.equalizeHist(self.grey, self.grey)
 
-		try:
-			self.pre_processed_image_pub.publish(pre_processed_image)
-		except CvBridgeError, e:
-			print e
+			# Convert back to ROS Image from Opencv formatf
+			pre_processed_image = self.convert_cv_to_img(self.grey)
+
+			try:
+				self.pre_processed_image_pub.publish(pre_processed_image)
+			except CvBridgeError, e:
+				print e
 
 	def unsubscribe_node(self):
 		# Function to unsubscribe a node from its topics and stop publishing data
-		try:
-			self.image_sub.unregister()
-			self.pre_processed_image_pub.unregister()
-		except:
-			print "Error unsubscribing nodes"
+		self.is_offloaded = True
+		self.image_sub.unregister()
+		self.pre_processed_image_pub = None
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
 		self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
 		self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
+		
+		self.is_offloaded = False
+
 
 
 

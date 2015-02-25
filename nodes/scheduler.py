@@ -54,6 +54,10 @@ class Scheduler:
 
 		self.init_rate.sleep()
 
+		self.lk_offloaded = False
+		self.fd_offloaded = False
+		self.pp_offloaded = False
+
 		#spin the node
 		self.offloading_scheduler()
 
@@ -74,40 +78,45 @@ class Scheduler:
 				if cpu_usage >= self.HIGH_CPU_USAGE_THRESHOLD and not self.lk_offloaded:
 
 					self.offload_node(self.rpi_lk_tracker_node, self.UNSUBSCRIBE)
-					self.init_rate.sleep()
+					self.rate.sleep()
 					self.offload_node(self.pc_lk_tracker_node, self.SUBSCRIBE)
 					self.lk_offloaded = self.NODE_REMOTE
 					print "offloaded lk"
 
 				if cpu_usage >= self.MID_CPU_USAGE_THRESHOLD and not self.fd_offloaded:
 
-					#self.offload_node(self.rpi_face_detection_node, self.UNSUBSCRIBE)
-					#self.offload_node(self.pc_face_detection_node, self.SUBSCRIBE)
+					self.offload_node(self.rpi_face_detection_node, self.UNSUBSCRIBE)
+					self.rate.sleep()
+					self.offload_node(self.pc_face_detection_node, self.SUBSCRIBE)
 					self.fd_offloaded = self.NODE_REMOTE
 					print "offloaded fd"
 
 				if cpu_usage >= self.LOW_CPU_USAGE_THRESHOLD and not self.pp_offloaded:
 
-					#self.offload_node(self.rpi_pre_processing_node, self.UNSUBSCRIBE)
-					#self.offload_node(self.pc_pre_processing_node, self.SUBSCRIBE)
+					self.offload_node(self.rpi_pre_processing_node, self.UNSUBSCRIBE)
+					self.rate.sleep()
+					self.offload_node(self.pc_pre_processing_node, self.SUBSCRIBE)
 					self.pp_offloaded = self.NODE_REMOTE
 					print "offloaded pp"
 
 				if cpu_usage < self.HIGH_CPU_USAGE_THRESHOLD and self.lk_offloaded:
-					#self.offload_node(self.pc_pre_processing_node, self.UNSUBSCRIBE)
-					#self.offload_node(self.rpi_lk_tracker_node, self.SUBSCRIBE)
+					self.offload_node(self.pc_pre_processing_node, self.UNSUBSCRIBE)
+					self.rate.sleep()
+					self.offload_node(self.rpi_lk_tracker_node, self.SUBSCRIBE)
 					self.lk_offloaded = self.NODE_LOCAL
 					print "unloaded lk"
 
 				if cpu_usage < self.MID_CPU_USAGE_THRESHOLD and self.fd_offloaded:
-					#self.offload_node(self.pc_pre_processing_node, self.UNSUBSCRIBE)
-					#self.offload_node(self.rpi_face_detection_node, self.SUBSCRIBE)
+					self.offload_node(self.pc_pre_processing_node, self.UNSUBSCRIBE)
+					self.rate.sleep()
+					self.offload_node(self.rpi_face_detection_node, self.SUBSCRIBE)
 					self.fd_offloaded = self.NODE_LOCAL
 					print "unloaded fd"
 
 				if cpu_usage < self.LOW_CPU_USAGE_THRESHOLD and self.pp_offloaded:
-					#self.offload_node(self.pc_pre_processing_node, self.UNSUBSCRIBE)
-					#self.offload_node(self.rpi_pre_processing_node, self.SUBSCRIBE)
+					self.offload_node(self.pc_pre_processing_node, self.UNSUBSCRIBE)
+					self.rate.sleep()
+					self.offload_node(self.rpi_pre_processing_node, self.SUBSCRIBE)
 					self.pp_offloaded = self.NODE_LOCAL
 					print "unloaded pp"
 					
@@ -171,10 +180,10 @@ class Scheduler:
 			self.rate.sleep()
 			self.set_nodes_status(self.NODE_LOCAL)
 
-			self.offload_node(self.pc_pre_processing_node, True)
-			self.offload_node(self.pc_face_detection_node, True)
-			self.offload_node(self.pc_lk_tracker_node, True)
-			self.set_nodes_status(self.NODE_REMOTE)
+			# self.offload_node(self.pc_pre_processing_node, True)
+			# self.offload_node(self.pc_face_detection_node, True)
+			# self.offload_node(self.pc_lk_tracker_node, True)
+			# self.set_nodes_status(self.NODE_REMOTE)
 
 	def set_nodes_status(self, state):
 			self.lk_offloaded = state
