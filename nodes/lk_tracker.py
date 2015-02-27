@@ -56,6 +56,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.motor_commands_pub = None
 
 		self.face_detected = True
+		self.track_box
 
 		# Parameters for lucas kande optical flow
 		self.lk_params = dict( winSize  = (self.WIN_SIZE,self.WIN_SIZE),
@@ -80,20 +81,20 @@ class LK_Tracker(Offloadable_FR_Node):
 		im_width, im_height = cv_image.shape
 
 		with self.face_box_lock:
-			face_box = self.face_box
+			if not self.track_box or not self.is_rect_nonzero(self.track_box):
+				self.features = []
+				self.track_box = self.face_box
 
 		# Switch between the incoming image streams depending on whether we have features or not
 		if self.features!=[] and self.face_detected == False:
 			with self.offloading_lock:
 				self.face_box_sub.unregister()
 				self.face_detected = True
-		elif self.face_detected == True and self.features==[]:
+		elif self.face_detected == True and (self.features==[] or self.track_box is None):
 			with self.offloading_lock:
 				self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 				self.face_detected = False
 
-		feature_box = None
-		
 		#  Initialize intermediate images if necessary 
 		if self.grey is None:
 			self.grey = np.zeros((im_width,im_height,1), np.uint8)
@@ -103,23 +104,18 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.marker_image = np.zeros((im_width,im_height,3), np.uint8)
 		self.grey = cv_image
 
-		if face_box and self.features != []:
+		if self.track_box and self.features != []:
 			self.features, status, track_error = cv2.calcOpticalFlowPyrLK(self.prev_grey, self.grey, np.asarray(self.features,dtype="float32"), None, **self.lk_params)
-
-			#  Keep only high status points 
-			self.features = [ p for (st,p) in zip(status, self.features) if st]  
-
-		elif face_box:
-			self.features = self.add_features(ros_image, face_box, self.features)
+			self.features = [ p for (st,p) in zip(status, self.features) if st]  #  Keep only high status points 
+		elif self.track_box and self.is_rect_nonzero(self.track_box):
+			self.features = self.add_features(ros_image, self.track_box, self.features)
 			# Since the detect box is larger than the actual face or desired patch, shrink the number of features by 10% 
-			self.min_features = int(len(self.features) * 0.9)
-			self.abs_min_features = int(0.5 * self.min_features)
 
 		# Swapping the images 
-		self.prev_grey, self.grey = self.grey, self.prev_grey
 		
 		# If we have some features... 
 		if len(self.features) > 0:
+
 			# The FitEllipse2 function below requires us to convert the feature array into a CvMat matrix 
 			# Draw the best fit ellipse around the feature points 
 			if len(self.features) > 6:
@@ -128,27 +124,29 @@ class LK_Tracker(Offloadable_FR_Node):
 			else:
 				feature_box = None
 
+			if (len(self.features) < self.min_features) and (self.track_box is not None) and (feature_box is not None):
+				self.expand_roi = self.expand_roi_init * self.expand_roi
+				((self.track_box.x, self.track_box.y), (self.track_box.width, self.track_box.height), a) = feature_box
+				self.track_box.width=self.track_box.width*self.expand_roi
+				self.track_box.height=self.track_box.height*self.expand_roi
+				self.features = self.add_features(ros_image, self.track_box, self.features)
+			else:
+				self.expand_roi = self.expand_roi_init
+
 			self.features, score = self.prune_features(self.features, self.abs_min_features)
 
 			if score == self.BAD_CLUSTER:
 				self.features = []
 				self.detect_box = None
-				face_box = None
+				self.track_box = None
 
-			if (len(self.features) < self.abs_min_features) and (face_box is not None) and (feature_box is not None):
-				self.expand_roi = self.expand_roi_init * self.expand_roi
-				((face_box.x, face_box.y), (face_box.width, face_box.height), a) = feature_box
-				face_box.width=face_box.width*self.expand_roi
-				face_box.height=face_box.height*self.expand_roi
-				self.features = self.add_features(ros_image, face_box, self.features)
-			else:
-				self.expand_roi = self.expand_roi_init
+		self.prev_grey, self.grey = self.grey, self.prev_grey
 
 		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
 
 		self.update_motor_position(self.features)
 
-		cv_image = self.draw_graphics(cv_image, face_box, self.features)
+		cv_image = self.draw_graphics(cv_image, self.track_box, self.features)
 		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
 		with self.offloading_lock:
@@ -192,12 +190,12 @@ class LK_Tracker(Offloadable_FR_Node):
 					try:
 						if center_x <= left_threshold:
 							motor_command.motor_command = self.YAW_RIGHT
-							motor_command.angle = 20
+							motor_command.angle = 10
 							self.motor_commands_pub.publish(motor_command)
 
 						if center_x >= right_threshold:
 							motor_command.motor_command = self.YAW_LEFT
-							motor_command.angle = 20
+							motor_command.angle = 10
 							self.motor_commands_pub.publish(motor_command)
 					except:
 						print "Error publishing motor commands"
@@ -230,6 +228,10 @@ class LK_Tracker(Offloadable_FR_Node):
 		# takes an image, a track box and an array of feature coordinates
 		# and adds new features to this. Should return the array of 
 		# new feature coordinates
+
+		self.min_features = int(len(self.features) * 0.9)
+		self.abs_min_features = int(0.5 * self.min_features)
+
 		rospy.wait_for_service('add_features')
 		add_features = rospy.ServiceProxy('add_features', AddFeatures)
 
@@ -252,13 +254,13 @@ class LK_Tracker(Offloadable_FR_Node):
 		# Draw the points as green circles and add them to the features matrix 
 
 		# If there is a face box then draw a rectange around the region the face occupies
-		if face_box:
+		if face_box and len(self.features) > self.abs_min_features:
 			pt1 = (int(face_box.x), int(face_box.y))
 			pt2 = (int(face_box.x+face_box.width), int(face_box.y+face_box.height))
 			cv2.rectangle(cv_image, pt1, pt2, self.COLOUR_FACE_BOX, thickness=2)
 
 		# Otherwise if there are already features then draw the feature points as points on the face
-		if len(features) > 0:
+		if len(features) > self.abs_min_features:
 			for the_point in features:
 				cv2.circle(cv_image, (int(the_point[0]), int(the_point[1])), 2, self.COLOUR_FEATURE_POINTS,self.CV_FILLED)
 

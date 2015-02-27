@@ -82,10 +82,10 @@ class Face_Detector(Offloadable_FR_Node):
 			faces = self.haar_detector(self.cascade_frontal_alt)
 		
 		#If face is not found, try the profile template
-		if len(faces) is 0:
+		if len(faces) == 0:
 			if self.cascade_profile:
 				faces = self.haar_detector(self.cascade_profile)
-			if len(faces) is 0:
+			if len(faces) == 0:
 				# If that fails, check a different frontal profile 
 				if self.cascade_frontal_alt2:
 					faces = self.haar_detector(self.cascade_frontal_alt2)

@@ -44,6 +44,7 @@ class Scheduler:
 
 		self.isAutomatic = True
 		self.percentage = 0
+		self.cpu_usage_lock = threading.Lock()
 
 		self.offload_command_lock = threading.Lock()
 
@@ -58,6 +59,8 @@ class Scheduler:
 		self.fd_offloaded = False
 		self.pp_offloaded = False
 
+		cpu_usage_thread = threading.Thread(target = self.offloading_scheduler)
+		cpu_usage_thread.start()
 		#spin the node
 		self.offloading_scheduler()
 
@@ -68,7 +71,6 @@ class Scheduler:
 
 
 	# Separate cpu_usage into another thread
-	
 	def offloading_scheduler(self):
 		try:
 			while True:
@@ -137,11 +139,11 @@ class Scheduler:
 				cpu_usage = ps.cpu_percent()
 				print str(cpu_usage)
 
-			print "actual cpu output " + str(cpu_usage) #remove
+			print "Actual cpu output: " + str(cpu_usage) #remove
 		else:
 			with self.offload_command_lock:
 				cpu_usage = self.percentage
-			print "manual cpu output " + str(cpu_usage) #remove
+			print "Manual cpu output: " + str(cpu_usage) #remove
 
 		
 		return cpu_usage
