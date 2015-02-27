@@ -87,7 +87,6 @@ class LK_Tracker(Offloadable_FR_Node):
 			with self.offloading_lock:
 				self.face_box_sub.unregister()
 				self.face_detected = True
-
 		elif self.face_detected == True and self.features==[]:
 			with self.offloading_lock:
 				self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
@@ -115,7 +114,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			# Since the detect box is larger than the actual face or desired patch, shrink the number of features by 10% 
 			self.min_features = int(len(self.features) * 0.9)
 			self.abs_min_features = int(0.5 * self.min_features)
-			
+
 		# Swapping the images 
 		self.prev_grey, self.grey = self.grey, self.prev_grey
 		
@@ -162,6 +161,8 @@ class LK_Tracker(Offloadable_FR_Node):
 						self.output_image_pub.publish(original_image)
 				except CvBridgeError, e:
 					print e
+
+		self.check_for_offload()
 
 
 
@@ -260,11 +261,6 @@ class LK_Tracker(Offloadable_FR_Node):
 		if len(features) > 0:
 			for the_point in features:
 				cv2.circle(cv_image, (int(the_point[0]), int(the_point[1])), 2, self.COLOUR_FEATURE_POINTS,self.CV_FILLED)
-				# try:
-				# 	feature_matrix[0][i] = (int(the_point[0]), int(the_point[1]))
-				# except:
-				# 	pass
-				# i = i + 1
 
 		return cv_image
 
@@ -272,16 +268,15 @@ class LK_Tracker(Offloadable_FR_Node):
 		# Function to unsubscribe a node from its topics and stop publishing data
 		try:
 			with self.offloading_lock:
-				if self.is_offloaded == False and self.face_detected ==  False:
-					self.is_offloaded = True
-					self.face_box_sub = None
-					self.output_image_pub = None
-					self.motor_commands_pub = None
-					self.image_sub = None
-					#self.output_image_pub.unregister()
-					#self.motor_commands_pub.unregister()
-		except e:
-			print e
+				if self.is_offloaded == False:
+					self.output_image_pub.unregister()
+					self.motor_commands_pub.unregister()
+					self.image_sub.unregister()
+				
+					if self.face_detected == False:
+						self.face_box_sub.unregister()
+		except:
+			print "Could not unsubscribe node"
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
@@ -290,8 +285,6 @@ class LK_Tracker(Offloadable_FR_Node):
 			self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 			self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
 			self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
-
-			self.is_offloaded = False
 
 def main(args):
 	try:   

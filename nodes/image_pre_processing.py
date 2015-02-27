@@ -68,14 +68,15 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 			print "Could not publish data"
 			print e
 
+		self.check_for_offload()
+
 	def unsubscribe_node(self):
 		try:
 			with self.offloading_lock:
 			# Function to unsubscribe a node from its topics and stop publishing data
 				if self.is_offloaded == False:
-					self.is_offloaded = True
-					self.image_sub = None
-					self.pre_processed_image_pub = None
+					self.image_sub.unregister()
+					self.pre_processed_image_pub.unregister()
 		except:
 			"Node could not be offloaded"
 
@@ -84,8 +85,6 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		with self.offloading_lock:
 			self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
 			self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
-
-			self.is_offloaded = False
 
 
 

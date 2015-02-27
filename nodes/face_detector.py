@@ -103,6 +103,8 @@ class Face_Detector(Offloadable_FR_Node):
 		except CvBridgeError, e:
 			print e
 
+		self.check_for_offload()
+
 	# Fuction to generate a list of face objects when given a classifier template
 	def haar_detector(self, classifier):
 		return classifier.detectMultiScale(self.small_image, self.HAAR_SCALE, self.MIN_NEIGHBORS, self.HAAR_FLAGS, self.MIN_SIZE)
@@ -132,12 +134,11 @@ class Face_Detector(Offloadable_FR_Node):
 		try:
 			with self.offloading_lock:
 				if self.is_offloaded == False:
-					self.is_offloaded = True
 					# Function to unsubscribe a node from its topics and stop publishing data
 					# self.output_image_pub.unregister()
 					# self.face_detect_output_image_pub.shutdown()
-					self.image_sub = None
-					self.output_face_box_pub = None
+					self.image_sub.unregister()
+					self.output_face_box_pub.unregister()
 		except:
 			"Node could not be offloaded"
 
@@ -149,8 +150,6 @@ class Face_Detector(Offloadable_FR_Node):
 			#self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size) 
 			#self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
 			self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
-
-			self.is_offloaded = False
 
 
 

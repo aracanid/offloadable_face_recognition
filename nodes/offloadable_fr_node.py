@@ -124,7 +124,10 @@ class Offloadable_FR_Node:
 
 
 		self.is_offloaded = True
+		self.offload_node = True
 		self.offloading_lock = threading.Lock()
+
+		self.init = False
 
 
 		__metaclass__ = abc.ABCMeta
@@ -184,14 +187,31 @@ class Offloadable_FR_Node:
 
 	def scheduler_listener(self, scheduler_command):
 		if scheduler_command.node_name == self.node_name:
-			if scheduler_command.offload == True:	
-				print "unsubcribed " + self.node_name
-				self.unsubscribe_node() # Must be implemented by each offloadable node
+			if scheduler_command.offload == True:
+				self.offload_node = True
 			elif scheduler_command.offload == False:
-				print "subcribed " + self.node_name
-				self.resubscribe_node() # Must be implemented by each offloadable node
+				self.offload_node = False
+				if self.is_offloaded == True:
+					self.resubscribe_node() # Must be implemented by each offloadable node
+					self.is_offloaded = False
+					print "*** Subscribed to " + self.node_name + " ***"
 			else:
 				print "Badly formatted scheduler command"
+
+			self.check_if_initialised()
+
+	def check_if_initialised(self):
+		if not self.init:
+			self.init = True
+			self.check_for_offload()
+
+	def check_for_offload(self):
+		if self.offload_node == True and self.is_offloaded == False:	
+			self.unsubscribe_node() # Must be implemented by each offloadable node
+			self.is_offloaded = True
+			print "*** Unsubscribed from " + self.node_name + " ***"
+
+
 
 	def cleanup(self):
 		print "Shutting down vision node."
