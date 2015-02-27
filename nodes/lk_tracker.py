@@ -57,13 +57,6 @@ class LK_Tracker(Offloadable_FR_Node):
 
 		self.face_detected = True
 
-		# # params for ShiTomasi corner detection
-		# self.feature_params = dict( maxCorners = self.MAX_COUNT,
-		#                        qualityLevel = self.QUALITY,
-		#                        minDistance = self.GOOD_FEATURE_DISTANCE,
-		#                        blockSize = self.BLOCK_SIZE,
-		#                        k = 0.04)
-
 		# Parameters for lucas kande optical flow
 		self.lk_params = dict( winSize  = (self.WIN_SIZE,self.WIN_SIZE),
 						  maxLevel = self.MAX_LEVEL,
@@ -74,21 +67,6 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.image_sub = None
 		self.face_box_sub = None
 		self.motor_commands_pub = None
-		#self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
-		#self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
-		#self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
-
-		# A publisher to output the display image back to a ROS topic 
-		#self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
-
-		# # Subscribe to the raw camera image topic and set the image processing callback 
-		#self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
-		#self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
-
-		# Subscribe to the raw camera image topic and set the image processing callback to self.pre_processing()
-		#image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
-		# Subscribe to the preprocessed image output and set the detect_face as the callback
-		#image_sub = rospy.Subscriber(self.marker_image_output, Image, self.update_marker_image, queue_size=self.queue_size)
 
 	def update_face_box(self, face_box):
 		with self.face_box_lock:
@@ -107,21 +85,13 @@ class LK_Tracker(Offloadable_FR_Node):
 		# Switch between the incoming image streams depending on whether we have features or not
 		if self.features!=[] and self.face_detected == False:
 			with self.offloading_lock:
-		# 		#self.image_sub.unregister()
-		# 		#self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
 				self.face_box_sub.unregister()
 				self.face_detected = True
-		# 		print "switched topic to tracking only"
 
 		elif self.face_detected == True and self.features==[]:
 			with self.offloading_lock:
-		# 		#self.image_sub.unregister()
-		# 		#self.image_sub = rospy.Subscriber(self.face_detect_output_image, Image, self.track_lk, queue_size=self.queue_size)
-		# 		#self.face_box_sub.unregister()
 				self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
-
 				self.face_detected = False
-		# 		print "switched topic back to face detector"
 
 		feature_box = None
 		
@@ -145,6 +115,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			# Since the detect box is larger than the actual face or desired patch, shrink the number of features by 10% 
 			self.min_features = int(len(self.features) * 0.9)
 			self.abs_min_features = int(0.5 * self.min_features)
+			
 		# Swapping the images 
 		self.prev_grey, self.grey = self.grey, self.prev_grey
 		
