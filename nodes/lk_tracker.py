@@ -31,7 +31,8 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.FLAGS = 0
 		self.MAX_LEVEL = 2
 		self.CV_FILLED = -1
-		self.BAD_CLUSTER = -1
+		self.BAD_CLUSTER = False
+		self.GOOD_CLUSTER = True
 		self.COLOUR_FACE_BOX = (0,0,255) # BLUE
 		self.COLOUR_FEATURE_POINTS = (0,255,0) # GREEN
 		self.COLOUR_NO_FACE_TEXT = (255,0,0) # RED
@@ -157,7 +158,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			else:
 				feature_box = None
 
-			self.features, score = self.prune_features(self.features)
+			self.features, score = self.prune_features(self.features, self.abs_min_features)
 
 			if score == self.BAD_CLUSTER:
 				self.features = []
@@ -185,6 +186,7 @@ class LK_Tracker(Offloadable_FR_Node):
 				try:
 					if len(self.features) > 0:
 						self.output_image_pub.publish(ros_image)
+						"print tracking face"
 					else:
 						self.output_image_pub.publish(original_image)
 				except CvBridgeError, e:
@@ -213,18 +215,23 @@ class LK_Tracker(Offloadable_FR_Node):
 			
 			motor_command = MotorCommand()
 
-			if center_x <= left_threshold:
-				motor_command.motor_command = self.YAW_RIGHT
-				motor_command.angle = 20
-				self.motor_commands_pub.publish(motor_command)
+			with self.offloading_lock:
+				if self.is_offloaded == False:
+					try:
+						if center_x <= left_threshold:
+							motor_command.motor_command = self.YAW_RIGHT
+							motor_command.angle = 20
+							self.motor_commands_pub.publish(motor_command)
 
-			if center_x >= right_threshold:
-				motor_command.motor_command = self.YAW_LEFT
-				motor_command.angle = 20
-				self.motor_commands_pub.publish(motor_command)
+						if center_x >= right_threshold:
+							motor_command.motor_command = self.YAW_LEFT
+							motor_command.angle = 20
+							self.motor_commands_pub.publish(motor_command)
+					except:
+						print "Error publishing motor commands"
 
 
-	def prune_features(self, prev_features):
+	def prune_features(self, prev_features, abs_min_features):
 		# takes an array of feature coordinates and prunes them
 		# returning the new set of features and a quality score.
 		# Prune features that are too far from the main cluster
@@ -232,7 +239,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			prune_features = rospy.ServiceProxy('prune_features', PruneFeatures)
 
 			try:
-				response = prune_features(self.convert_to_feature_coordinates(prev_features))
+				response = prune_features(self.convert_to_feature_coordinates(prev_features), abs_min_features)
 
 				features = self.convert_to_tuple_array(response.features)
 				score = response.score
@@ -296,10 +303,10 @@ class LK_Tracker(Offloadable_FR_Node):
 			with self.offloading_lock:
 				if self.is_offloaded == False and self.face_detected ==  False:
 					self.is_offloaded = True
-					self.face_box_sub.unregister()
+					self.face_box_sub = None
 					self.output_image_pub = None
 					self.motor_commands_pub = None
-					self.image_sub.unregister()
+					self.image_sub = None
 					#self.output_image_pub.unregister()
 					#self.motor_commands_pub.unregister()
 		except e:

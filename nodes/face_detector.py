@@ -129,7 +129,6 @@ class Face_Detector(Offloadable_FR_Node):
 
 	# Abstract method implementations to allow scheduler commands to be processed
 	def unsubscribe_node(self):
-		print "###############################################"
 		try:
 			with self.offloading_lock:
 				if self.is_offloaded == False:
@@ -137,7 +136,7 @@ class Face_Detector(Offloadable_FR_Node):
 					# Function to unsubscribe a node from its topics and stop publishing data
 					# self.output_image_pub.unregister()
 					# self.face_detect_output_image_pub.shutdown()
-					self.image_sub.unregister()
+					self.image_sub = None
 					self.output_face_box_pub = None
 		except:
 			"Node could not be offloaded"

@@ -1,4 +1,5 @@
 FeatureCoordinates[] prev_features
+uint32 abs_min_features
 ---
 FeatureCoordinates[] features
-int32 score
+bool score

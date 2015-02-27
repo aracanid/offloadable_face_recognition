@@ -17,9 +17,9 @@ class Prune_Features_Server(Offloadable_FR_Node):
 	def __init__(self, node_name):
 		Offloadable_FR_Node.__init__(self, node_name)
 		
-		self.BAD_CLUSTER = -1
-		self.GOOD_CLUSTER = 1
-		self.ABS_MIN_FEATURES = 6
+		self.BAD_CLUSTER = False
+		self.GOOD_CLUSTER = True
+		self.abs_min_features = 6
 
 		self.OUTLIER_THRESHOLD = 2.5
 		self.MSE_THRESHOLD = 10000
@@ -27,6 +27,7 @@ class Prune_Features_Server(Offloadable_FR_Node):
 		s = rospy.Service('prune_features', PruneFeatures, self.prune_features)
 
 	def prune_features(self, request):
+		self.abs_min_features = request.abs_min_features
 		prev_features = self.convert_to_tuple_array(request.prev_features)
 		sum_x = 0
 		sum_y = 0
@@ -68,7 +69,7 @@ class Prune_Features_Server(Offloadable_FR_Node):
 		features = prev_features
 
 		# Consider a cluster bad if we have fewer than abs_min_features left 
-		if features_len < self.ABS_MIN_FEATURES:
+		if features_len < self.abs_min_features:
 			score = self.BAD_CLUSTER
 		else:
 			score = self.GOOD_CLUSTER

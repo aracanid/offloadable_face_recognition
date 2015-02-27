@@ -77,47 +77,35 @@ class Scheduler:
 				if cpu_usage >= self.HIGH_CPU_USAGE_THRESHOLD and not self.lk_offloaded:
 
 					self.offload_node(self.rpi_lk_tracker_node, self.UNSUBSCRIBE)
-					self.rate.sleep()
 					self.offload_node(self.pc_lk_tracker_node, self.SUBSCRIBE)
 					self.lk_offloaded = self.NODE_REMOTE
-					print "offloaded lk"
 
 				if cpu_usage >= self.MID_CPU_USAGE_THRESHOLD and not self.fd_offloaded:
 
 					self.offload_node(self.rpi_face_detection_node, self.UNSUBSCRIBE)
-					self.rate.sleep()
 					self.offload_node(self.pc_face_detection_node, self.SUBSCRIBE)
 					self.fd_offloaded = self.NODE_REMOTE
-					print "offloaded fd"
 
 				if cpu_usage >= self.LOW_CPU_USAGE_THRESHOLD and not self.pp_offloaded:
 
 					self.offload_node(self.rpi_pre_processing_node, self.UNSUBSCRIBE)
-					self.rate.sleep()
 					self.offload_node(self.pc_pre_processing_node, self.SUBSCRIBE)
 					self.pp_offloaded = self.NODE_REMOTE
-					print "offloaded pp"
 
 				if cpu_usage < self.HIGH_CPU_USAGE_THRESHOLD and self.lk_offloaded:
 					self.offload_node(self.pc_lk_tracker_node, self.UNSUBSCRIBE)
-					self.rate.sleep()
 					self.offload_node(self.rpi_lk_tracker_node, self.SUBSCRIBE)
 					self.lk_offloaded = self.NODE_LOCAL
-					print "unloaded lk"
 
 				if cpu_usage < self.MID_CPU_USAGE_THRESHOLD and self.fd_offloaded:
 					self.offload_node(self.pc_face_detection_node, self.UNSUBSCRIBE)
-					self.rate.sleep()
 					self.offload_node(self.rpi_face_detection_node, self.SUBSCRIBE)
 					self.fd_offloaded = self.NODE_LOCAL
-					print "unloaded fd"
 
 				if cpu_usage < self.LOW_CPU_USAGE_THRESHOLD and self.pp_offloaded:
 					self.offload_node(self.pc_pre_processing_node, self.UNSUBSCRIBE)
-					self.rate.sleep()
 					self.offload_node(self.rpi_pre_processing_node, self.SUBSCRIBE)
 					self.pp_offloaded = self.NODE_LOCAL
-					print "unloaded pp"
 					
 				#elif cpu_usage < self.LOW_CPU_USAGE_THRESHOLD:
 
@@ -164,7 +152,7 @@ class Scheduler:
 			scheduler_command.node_name = node_name
 			scheduler_command.offload = destination
 			self.scheduler_pub.publish(scheduler_command)
-			print "offloaded node " + node_name
+			self.rate.sleep()
 		except CvBridgeError, e:
 			print e
 

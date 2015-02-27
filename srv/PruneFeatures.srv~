@@ -1,4 +1,5 @@
-tuple[] prev_features
+FeatureCoordinates[] prev_features
+uint32 abs_min_features
 ---
-tuple[] features
+FeatureCoordinates[] features
 int32 score

@@ -74,7 +74,7 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 			# Function to unsubscribe a node from its topics and stop publishing data
 				if self.is_offloaded == False:
 					self.is_offloaded = True
-					self.image_sub.unregister()
+					self.image_sub = None
 					self.pre_processed_image_pub = None
 		except:
 			"Node could not be offloaded"

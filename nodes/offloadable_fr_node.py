@@ -184,13 +184,14 @@ class Offloadable_FR_Node:
 
 	def scheduler_listener(self, scheduler_command):
 		if scheduler_command.node_name == self.node_name:
-
-			if scheduler_command.offload:
+			if scheduler_command.offload == True:	
 				print "unsubcribed " + self.node_name
 				self.unsubscribe_node() # Must be implemented by each offloadable node
-			else:
+			elif scheduler_command.offload == False:
 				print "subcribed " + self.node_name
 				self.resubscribe_node() # Must be implemented by each offloadable node
+			else:
+				print "Badly formatted scheduler command"
 
 	def cleanup(self):
 		print "Shutting down vision node."
