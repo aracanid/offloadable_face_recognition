@@ -33,7 +33,7 @@ class Motor_Controller:
 
 		self.motor_commands = rospy.Subscriber(self.MOTOR_COMMANDS, MotorCommand, self.motor_command_listener, queue_size=self.queue_size)
 
-	def motor_command_listener(self, motor_command):
+	def feature_coordinates_listener(self, feature_coordinates):
 		self.send_command(motor_command.motor_command, motor_command.angle)
 	
 	def initialise_connection(self, ip_addr):
@@ -44,6 +44,27 @@ class Motor_Controller:
 		values = (command, angle)
 		packed_data = self.packer.pack(*values)
 		self.socket.sendall(packed_data)
+
+
+	#Should move this into the motor controller and simply have
+	#the motor controller recieve the current position?
+	def get_features_center(self, features):
+		# take the center of the current ellipse as the mean point
+		# and sends the data to the motor controller
+		features_len = len(features)
+		# Compute the COG (center of gravity) of the cluster 
+		if features_len > 0:
+			sum_x, sum_y = 0, 0
+			for point in features:
+				sum_x = sum_x + point[0]
+				sum_y = sum_y + point[1]
+			
+			center_x = sum_x / features_len
+			center_y = sum_y / features_len
+
+			return center_x, center_y
+
+	
 
 
 def main(args):

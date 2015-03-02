@@ -162,45 +162,6 @@ class LK_Tracker(Offloadable_FR_Node):
 
 		self.check_for_offload()
 
-
-
-	#Should move this into the motor controller and simply have
-	#the motor controller recieve the current position?
-	def update_motor_position(self, features):
-		# take the center of the current ellipse as the mean point
-		# and sends the data to the motor controller
-		features_len = len(features)
-		# Compute the COG (center of gravity) of the cluster 
-		if features_len > 0:
-			sum_x, sum_y = 0, 0
-			for point in features:
-				sum_x = sum_x + point[0]
-				sum_y = sum_y + point[1]
-			
-			center_x = sum_x / features_len
-			center_y = sum_y / features_len
-
-			left_threshold = self.camera_edge_threshold
-			right_threshold = self.camera_x - self.camera_threshold_tolerance
-			
-			motor_command = MotorCommand()
-
-			with self.offloading_lock:
-				if self.is_offloaded == False:
-					try:
-						if center_x <= left_threshold:
-							motor_command.motor_command = self.YAW_RIGHT
-							motor_command.angle = 10
-							self.motor_commands_pub.publish(motor_command)
-
-						if center_x >= right_threshold:
-							motor_command.motor_command = self.YAW_LEFT
-							motor_command.angle = 10
-							self.motor_commands_pub.publish(motor_command)
-					except:
-						print "Error publishing motor commands"
-
-
 	def prune_features(self, prev_features, abs_min_features):
 		# takes an array of feature coordinates and prunes them
 		# returning the new set of features and a quality score.
@@ -244,27 +205,6 @@ class LK_Tracker(Offloadable_FR_Node):
 		except rospy.ServiceException as exc:
 			features = []
 			print("Service did not process request: " + str(exc))
-
-		
-
-	def draw_graphics(self, cv_image, face_box, features):
-		# take input image, check for whether there is a facebox or feature box
-		# and if there is either, draw the appropriate graphics ontop of the
-		# cv_image. Otherwise simply return the initial image. Returns feature matrix
-		# Draw the points as green circles and add them to the features matrix 
-
-		# If there is a face box then draw a rectange around the region the face occupies
-		if face_box and len(self.features) > self.abs_min_features:
-			pt1 = (int(face_box.x), int(face_box.y))
-			pt2 = (int(face_box.x+face_box.width), int(face_box.y+face_box.height))
-			cv2.rectangle(cv_image, pt1, pt2, self.COLOUR_FACE_BOX, thickness=2)
-
-		# Otherwise if there are already features then draw the feature points as points on the face
-		if len(features) > self.abs_min_features:
-			for the_point in features:
-				cv2.circle(cv_image, (int(the_point[0]), int(the_point[1])), 2, self.COLOUR_FEATURE_POINTS,self.CV_FILLED)
-
-		return cv_image
 
 	def unsubscribe_node(self):
 		# Function to unsubscribe a node from its topics and stop publishing data
