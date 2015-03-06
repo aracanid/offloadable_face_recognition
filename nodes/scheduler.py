@@ -128,7 +128,6 @@ class Scheduler:
 
 		if self.isAutomatic:
 			cpu_usage_sum = 0
-
 			# If there are multiple CPUs then we should take the average between these
 			if self.cpu_count > 1:
 				cpu_usage = ps.cpu_percent(percpu=True)
@@ -138,12 +137,9 @@ class Scheduler:
 			else:
 				cpu_usage = ps.cpu_percent()
 				print str(cpu_usage)
-
-			print "Actual cpu output: " + str(cpu_usage) #remove
 		else:
 			with self.offload_command_lock:
 				cpu_usage = self.percentage
-			print "Manual cpu output: " + str(cpu_usage) #remove
 
 		
 		return cpu_usage
@@ -155,38 +151,26 @@ class Scheduler:
 			scheduler_command.offload = destination
 			self.scheduler_pub.publish(scheduler_command)
 			self.rate.sleep()
-		except CvBridgeError, e:
-			print e
+		except OffloadingError, e:
+			print "Could not offload node " + node_name + "\n" + "-----\n" + e
 
 	def initialise_nodes(self, isLocal):
 		self.rate.sleep()
 		if isLocal == True:
 			self.set_nodes_status(self.NODE_LOCAL)
-			self.rate.sleep()
 			self.offload_node(self.rpi_pre_processing_node, self.pp_offloaded)
-			self.rate.sleep()
 			self.offload_node(self.rpi_lk_tracker_node, self.lk_offloaded)
-			self.rate.sleep()
 			self.offload_node(self.rpi_face_detection_node, self.fd_offloaded)
-			self.rate.sleep()
 		else:
 			self.set_nodes_status(self.NODE_REMOTE)
-			self.rate.sleep()
 			self.offload_node(self.pc_pre_processing_node, self.pp_offloaded)
-			self.rate.sleep()
 			self.offload_node(self.pc_face_detection_node, self.fd_offloaded)
-			self.rate.sleep()
 			self.offload_node(self.pc_lk_tracker_node, self.lk_offloaded)
-			self.rate.sleep()
 
 	def set_nodes_status(self, state):
 			self.lk_offloaded = state
 			self.fd_offloaded = state
 			self.pp_offloaded = state
-
-
-
-
 
 def main(args):
 	try:   
@@ -195,9 +179,8 @@ def main(args):
 		# Spin so our services will work
 		print "Node started..."
 		rospy.spin()
-	except KeyboardInterrupt:
-		print "Shutting down vision node."
-		cv.DestroyAllWindows()
+	except rospy.ROSInterruptException:
+		print "Shutting down " + SC.node_name
 
 if __name__ == '__main__':
 

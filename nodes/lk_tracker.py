@@ -9,6 +9,7 @@ import threading
 
 from offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
+from offloadable_fr_node.errors import OffloadingError
 from sensor_msgs.msg import Image
 from offloadable_face_recognition.msg import FaceBox,SchedulerCommand, MotorCommand
 from offloadable_face_recognition.srv import *
@@ -157,8 +158,8 @@ class LK_Tracker(Offloadable_FR_Node):
 						"print tracking face"
 					else:
 						self.output_image_pub.publish(original_image)
-				except CvBridgeError, e:
-					print e
+				except OffloadingPublishError, e:
+					print "Could publish data for" + self.node_name + "\n" + "-----\n" + e
 
 		self.check_for_offload()
 
@@ -217,8 +218,8 @@ class LK_Tracker(Offloadable_FR_Node):
 				
 					if self.face_detected == False:
 						self.face_box_sub.unregister()
-		except:
-			print "Could not unsubscribe node"
+		except OffloadingError, e:
+			print "Could not offload node " + self.node_name + "\n" + "-----\n" + e
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
@@ -235,9 +236,8 @@ def main(args):
 		# Spin so our services will work
 		print "Node started..."
 		rospy.spin()
-	except KeyboardInterrupt:
-		print "Shutting down vision node."
-		cv.DestroyAllWindows()
+	except rospy.ROSInterruptException:
+		print "Shutting down " + LK.node_name
 
 if __name__ == '__main__':
 

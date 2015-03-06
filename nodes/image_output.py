@@ -42,8 +42,9 @@ class Post_Processing(Offloadable_FR_Node):
 			with self.offloading_lock:
 				if self.is_offloaded == False:
 					self.image_sub.unregister()
-		except:
-			"Node could not be offloaded"
+		except OffloadingError, e:
+			print "Could not offload node " + self.node_name + "\n" + "-----\n" + e
+
 
 
 	def resubscribe_node(self):
@@ -58,9 +59,8 @@ def main(args):
 		PP = Post_Processing("image_output_node")
 		# Spin so our services will work
 		rospy.spin()
-	except KeyboardInterrupt:
-		print "Shutting down vision node."
-		cv.DestroyAllWindows()
+	except rospy.ROSInterruptException:
+		print "Shutting down " + PP.node_name
 
 if __name__ == '__main__':
 

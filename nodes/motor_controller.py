@@ -74,9 +74,8 @@ def main(args):
 		# Spin so our services will work
 		print "Node started..."
 		rospy.spin()
-	except KeyboardInterrupt:
-		print "Shutting down vision node."
-		cv.DestroyAllWindows()
+	except rospy.ROSInterruptException:
+		print "Shutting down " + MC.node_name
 
 if __name__ == '__main__':
 	main(sys.argv)

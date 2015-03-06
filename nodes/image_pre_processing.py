@@ -64,9 +64,8 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 			with self.offloading_lock:
 				if self.is_offloaded == False:
 					self.pre_processed_image_pub.publish(pre_processed_image)
-		except CvBridgeError, e:
-			print "Could not publish data"
-			print e
+		except OffloadingPublishError, e:
+			print "Could publish data for" + self.node_name + "\n" + "-----\n" + e
 
 		self.check_for_offload()
 
@@ -77,8 +76,9 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 				if self.is_offloaded == False:
 					self.image_sub.unregister()
 					self.pre_processed_image_pub.unregister()
-		except:
-			"Node could not be offloaded"
+		except OffloadingError, e:
+			print "Could not offload node " + self.node_name + "\n" + "-----\n" + e
+
 
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
@@ -94,8 +94,8 @@ def main(args):
 		PP = Image_Pre_Processing("pre_processing_node")
 		print "Node started..."
 		rospy.spin()
-	except KeyboardInterrupt:
-		print "ERROR: could not start node \n" + e
+	except rospy.ROSInterruptException:
+		print "Shutting down " + PP.node_name
 
 if __name__ == '__main__':
 	main(sys.argv)
