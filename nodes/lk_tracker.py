@@ -218,6 +218,7 @@ class LK_Tracker(Offloadable_FR_Node):
 				
 					if self.face_detected == False:
 						self.face_box_sub.unregister()
+						
 		except OffloadingError, e:
 			print "Could not offload node " + self.node_name + "\n" + "-----\n" + e
 
