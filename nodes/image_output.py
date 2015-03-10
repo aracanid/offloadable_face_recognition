@@ -24,7 +24,7 @@ class Post_Processing(Offloadable_FR_Node):
 		# cv_image. Otherwise simply return the initial image. Returns feature matrix
 		# Draw the points as green circles and add them to the features matrix 
 
-		# If there is a face box then draw a rectange around the region the face occupies
+		# If there is a face box then draw a rectangle around the region the face occupies
 		if face_box and len(self.features) > self.abs_min_features:
 			pt1 = (int(face_box.x), int(face_box.y))
 			pt2 = (int(face_box.x+face_box.width), int(face_box.y+face_box.height))

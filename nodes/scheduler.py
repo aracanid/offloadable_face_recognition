@@ -55,12 +55,14 @@ class Scheduler:
 
 		self.init_rate.sleep()
 
+		self.system_on = True
+
 		self.lk_offloaded = False
 		self.fd_offloaded = False
 		self.pp_offloaded = False
 
-		cpu_usage_thread = threading.Thread(target = self.offloading_scheduler)
-		cpu_usage_thread.start()
+		self.cpu_usage_thread = threading.Thread(target = self.offloading_scheduler)
+		self.cpu_usage_thread.start()
 		#spin the node
 		self.offloading_scheduler()
 
@@ -69,11 +71,17 @@ class Scheduler:
 			self.isAutomatic = command.type
 			self.percentage = command.percentage
 
+	def set_system_on(self, state):
+		with self.system_on_lock:
+			self.system_on = state
+
+	def get_system_on(self):
+		return self.system_on
 
 	# Separate cpu_usage into another thread
 	def offloading_scheduler(self):
-		try:
-			while True:
+		while get_system_on():
+			try:
 				cpu_usage = self.get_cpu_usage()
 
 				if cpu_usage >= self.HIGH_CPU_USAGE_THRESHOLD and not self.lk_offloaded:
@@ -119,8 +127,10 @@ class Scheduler:
 				# Fill the remainder of the frequency with a wait to prevent excessive spinning
 				self.rate.sleep()
 
-		except KeyboardInterrupt:
-			print "Scheduler shutting down..."
+			except KeyboardInterrupt:
+				print "Scheduler shutting down..."
+				self.set_system_on(False)
+				raise
 
 	def get_cpu_usage(self):
 		with self.offload_command_lock:

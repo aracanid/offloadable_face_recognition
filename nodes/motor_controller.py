@@ -15,12 +15,24 @@ class Motor_Controller:
 
 		rospy.init_node(node_name)
 
+
+		# Kp = 1000                             ! REMEMBER we are using Kp*100 so this is really 10 !
+		# Ki = 100                              ! REMEMBER we are using Ki*100 so this is really 1 !
+		# Kd = 10000                            ! REMEMBER we are using Kd*100 so this is really 100!
+		# offset = 45                           ! Initialize the variables
+		# Tp = 50 
+		# integral = 0                          ! the place where we will store our integral
+		# lastError = 0                         ! the place where we will store the last error value
+		# derivative = 0                        ! the place where we will store the derivative
+
+
+
 		self.PORT_NUMBER = 5004
 		self.DATA_SIZE = 1024
 		self.socket = None
 		self.MOTOR_COMMANDS = "motor_commands"
 		self.queue_size = 1
-		self.packer = struct.Struct('9s I')
+		self.packer = struct.Struct('f f')
 
 		self.YAW_LEFT = "yaw_left "
 		self.YAW_RIGHT = "yaw_right"
@@ -63,9 +75,6 @@ class Motor_Controller:
 			center_y = sum_y / features_len
 
 			return center_x, center_y
-
-	
-
 
 def main(args):
 	try:   

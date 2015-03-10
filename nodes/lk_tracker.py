@@ -11,7 +11,7 @@ from offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
 from offloadable_fr_node.errors import OffloadingError
 from sensor_msgs.msg import Image
-from offloadable_face_recognition.msg import FaceBox,SchedulerCommand, MotorCommand
+from offloadable_face_recognition.msg import FaceBox, SchedulerCommand, MotorCommand
 from offloadable_face_recognition.srv import *
 
 class LK_Tracker(Offloadable_FR_Node):
@@ -82,7 +82,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		im_width, im_height = cv_image.shape
 
 		with self.face_box_lock:
-			if not self.track_box or not self.is_rect_nonzero(self.track_box):
+			if not self.track_box:
 				self.features = []
 				self.track_box = self.face_box
 
@@ -108,7 +108,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		if self.track_box and self.features != []:
 			self.features, status, track_error = cv2.calcOpticalFlowPyrLK(self.prev_grey, self.grey, np.asarray(self.features,dtype="float32"), None, **self.lk_params)
 			self.features = [ p for (st,p) in zip(status, self.features) if st]  #  Keep only high status points 
-		elif self.track_box and self.is_rect_nonzero(self.track_box):
+		elif self.track_box:
 			self.features = self.add_features(ros_image, self.track_box, self.features)
 			# Since the detect box is larger than the actual face or desired patch, shrink the number of features by 10% 
 
