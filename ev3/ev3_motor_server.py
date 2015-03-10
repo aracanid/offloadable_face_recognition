@@ -1,7 +1,7 @@
 import socket
 import sys
 from ev3.ev3dev import Motor
-from offloadable_face_recognition.errors import MotorError
+#from offloadable_face_recognition.errors import MotorError
 import struct
 import threading
 
@@ -56,8 +56,6 @@ class Ev3_Motor_Server:
 		self.system_on_lock = threading.Lock()
 		self.update_coordinates_thread = threading.Thread(target = update_face_coordinates)
 		self.update_coordinates_thread.start()
-
-
 
 		print "Setting up connection.\n"
 		self.initialise_connection()
@@ -129,7 +127,7 @@ class Ev3_Motor_Server:
 
 	def motor_control(self):
 		self.previous_dt = self.current_time()
-		while get_system_on():
+		while self.get_system_on():
 			try:
 				if self.coordinates_time_recv > 0:
 		  			calculate_x_axis_pid()
@@ -149,7 +147,7 @@ class Ev3_Motor_Server:
 		self.coordinates_time_recv = -1
 		print "Connection address: ", addr
 
-		while get_system_on():
+		while self.get_system_on():
 			try:
 				data = conn.recv(self.unpacker.size) #data size
 				if not data:

@@ -80,7 +80,7 @@ class Scheduler:
 
 	# Separate cpu_usage into another thread
 	def offloading_scheduler(self):
-		while get_system_on():
+		while self.get_system_on():
 			try:
 				cpu_usage = self.get_cpu_usage()
 

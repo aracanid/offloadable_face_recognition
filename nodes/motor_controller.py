@@ -15,22 +15,11 @@ class Motor_Controller:
 
 		rospy.init_node(node_name)
 
-
-		# Kp = 1000                             ! REMEMBER we are using Kp*100 so this is really 10 !
-		# Ki = 100                              ! REMEMBER we are using Ki*100 so this is really 1 !
-		# Kd = 10000                            ! REMEMBER we are using Kd*100 so this is really 100!
-		# offset = 45                           ! Initialize the variables
-		# Tp = 50 
-		# integral = 0                          ! the place where we will store our integral
-		# lastError = 0                         ! the place where we will store the last error value
-		# derivative = 0                        ! the place where we will store the derivative
-
-
-
 		self.PORT_NUMBER = 5004
 		self.DATA_SIZE = 1024
 		self.socket = None
 		self.MOTOR_COMMANDS = "motor_commands"
+		self.feature_coordinates_output = "feature_coordinates"
 		self.queue_size = 1
 		self.packer = struct.Struct('f f')
 
@@ -43,19 +32,19 @@ class Motor_Controller:
 		print "Initialising connection..."
 		self.initialise_connection(motor_server_ip)
 
-		self.motor_commands = rospy.Subscriber(self.MOTOR_COMMANDS, MotorCommand, self.motor_command_listener, queue_size=self.queue_size)
+		self.feature_coordinates = rospy.Subscriber(self.feature_coordinates_output, FeatureCoordinates, self.feature_coordinates_listener, queue_size=self.queue_size)
 
 	def feature_coordinates_listener(self, feature_coordinates):
+
+		x, y = self.get_features_center(feature_coordinates)
+		values = (x, y)
+		packed_data = self.packer.pack(*values)
+		self.socket.sendall(packed_data)
 		self.send_command(motor_command.motor_command, motor_command.angle)
 	
 	def initialise_connection(self, ip_addr):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.socket.connect((ip_addr, self.PORT_NUMBER))
-
-	def send_command(self, command, angle):
-		values = (command, angle)
-		packed_data = self.packer.pack(*values)
-		self.socket.sendall(packed_data)
 
 
 	#Should move this into the motor controller and simply have
