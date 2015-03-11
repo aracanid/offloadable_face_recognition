@@ -127,10 +127,9 @@ class Scheduler:
 				# Fill the remainder of the frequency with a wait to prevent excessive spinning
 				self.rate.sleep()
 
-			except KeyboardInterrupt:
+	  		except (KeyboardInterrupt, SystemExit):
 				print "Scheduler shutting down..."
 				self.set_system_on(False)
-				raise
 
 	def get_cpu_usage(self):
 		with self.offload_command_lock:

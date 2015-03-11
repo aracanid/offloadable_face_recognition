@@ -139,7 +139,6 @@ class Ev3_Motor_Server:
 			  	print "Exiting motor controller!"
 			  	self.stop_x_axis_motors()
 			  	set_system_on(False)
-			    raise	
 
 
 	def update_face_coordinates(self):
