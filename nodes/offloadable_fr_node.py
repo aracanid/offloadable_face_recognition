@@ -14,6 +14,12 @@ import threading
 import abc
 import time
 
+class OffloadingError(Exception):
+	pass
+
+class OffloadingPublishError(OffloadingError):
+	pass
+
 class Offloadable_FR_Node:
 	def __init__(self, node_name):
 		
@@ -31,6 +37,8 @@ class Offloadable_FR_Node:
 		self.output_image = "output_image"
 		self.offloading_command_sub = "offloading_command_sub"
 		self.scheduler_commands = "scheduler_commands"
+
+		self.feature_coordinates_output = "feature_coordinates"
 
 		self.rate = rospy.Rate(1) #Hz
 

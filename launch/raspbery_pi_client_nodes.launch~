@@ -34,7 +34,7 @@
   </node>
 
   <node pkg="offloadable_face_recognition" name="scheduler" type="scheduler.py" output="screen">
-
+	<param name="node_name" value="rpi_scheduler" />
   </node>
 
   <node pkg="offloadable_face_recognition" name="prune_features_server" type="prune_features_server.py" output="screen">
@@ -42,6 +42,10 @@
 </node>
 
   <node pkg="offloadable_face_recognition" name="add_features_server" type="add_features_server.py" output="screen">
+	<param name="node_name" value="rpi_add_features_server" />
+</node>
+
+  <node pkg="offloadable_face_recognition" name="image_output" type="image_output.py" output="screen">
 	<param name="node_name" value="rpi_add_features_server" />
 </node>
 

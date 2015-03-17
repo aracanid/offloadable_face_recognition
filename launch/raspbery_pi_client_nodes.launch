@@ -45,4 +45,8 @@
 	<param name="node_name" value="rpi_add_features_server" />
 </node>
 
+  <node pkg="offloadable_face_recognition" name="image_output" type="image_output.py" output="screen">
+	<param name="node_name" value="rpi_image_output" />
+</node>
+
 </launch>

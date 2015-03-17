@@ -11,6 +11,7 @@ import threading
 from  offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+from OffloadingError import OffloadingError, OffloadingPublishError
 from offloadable_face_recognition.msg import SchedulerCommand
 
 class Image_Pre_Processing(Offloadable_FR_Node):

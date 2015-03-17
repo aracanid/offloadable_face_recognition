@@ -9,10 +9,9 @@ import threading
 
 from offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
-print sys.path
-#from offloadable_face_recognition.errors import OffloadingError
+from OffloadingError import OffloadingError, OffloadingPublishError
 from sensor_msgs.msg import Image
-from offloadable_face_recognition.msg import FaceBox, SchedulerCommand, MotorCommand, FeatureCoordinates
+from offloadable_face_recognition.msg import FaceBox, SchedulerCommand, MotorCommand, FeatureCoordinates, CoordinatesList
 from offloadable_face_recognition.srv import *
 
 class LK_Tracker(Offloadable_FR_Node):
@@ -41,7 +40,6 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.face_detected = False
 
 		self.motor_commands = "motor_commands"
-		self.feature_coordinates_output = "feature_coordinates"
 
 		self.camera_threshold_tolerance = 30 # %percent
 		self.camera_x, self.camera_y = self.camera_dimensions
@@ -148,18 +146,15 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.prev_grey, self.grey = self.grey, self.prev_grey
 
 		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
-		cv_image = self.draw_graphics(cv_image, self.track_box, self.features)
 		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
 		with self.offloading_lock:
 			if self.is_offloaded == False:
 				try:
-					if len(self.features) > 0:
-						self.output_image_pub.publish(ros_image)
+					if len(self.features) > self.abs_min_features:
+						print self.features 
+						print self.convert_to_feature_coordinates(self.features)
 						self.feature_coordinates_pub.publish(self.convert_to_feature_coordinates(self.features))
-						"print tracking face"
-					else:
-						self.output_image_pub.publish(original_image)
 				except OffloadingPublishError, e:
 					print "Could publish data for" + self.node_name + "\n" + "-----\n" + e
 
@@ -229,7 +224,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		# Function to resubscribe and republish the nodes data
 		with self.offloading_lock:
 			self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size)
-			self.feature_coordinates_pub = rospy.Publisher(self.feature_coordinates_output, FeatureCoordinates, queue_size=self.queue_size)
+			self.feature_coordinates_pub = rospy.Publisher(self.feature_coordinates_output, CoordinatesList, queue_size=self.queue_size)
 			self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 			self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
 			self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
