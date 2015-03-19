@@ -130,8 +130,8 @@ class LK_Tracker(Offloadable_FR_Node):
 			if (len(self.features) < self.min_features) and (self.track_box is not None) and (feature_box is not None):
 				self.expand_roi = self.expand_roi_init * self.expand_roi
 				((self.track_box.x, self.track_box.y), (self.track_box.width, self.track_box.height), a) = feature_box
-				self.track_box.width=self.track_box.width*self.expand_roi
-				self.track_box.height=self.track_box.height*self.expand_roi
+				self.track_box.width*=self.expand_roi
+				self.track_box.height*=self.expand_roi
 				self.features = self.add_features(ros_image, self.track_box, self.features)
 			else:
 				self.expand_roi = self.expand_roi_init
