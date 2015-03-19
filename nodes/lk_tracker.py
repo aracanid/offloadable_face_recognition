@@ -38,6 +38,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.COLOUR_FEATURE_POINTS = (0,255,0) # GREEN
 		self.COLOUR_NO_FACE_TEXT = (255,0,0) # RED
 		self.face_detected = False
+		self.MIN_ELLIPSE_FEATURES = 6
 
 		self.motor_commands = "motor_commands"
 
@@ -121,7 +122,7 @@ class LK_Tracker(Offloadable_FR_Node):
 
 			# The FitEllipse2 function below requires us to convert the feature array into a CvMat matrix 
 			# Draw the best fit ellipse around the feature points 
-			if len(self.features) > 6:
+			if len(self.features) > self.MIN_ELLIPSE_FEATURES:
 				self.feature_matrix = np.float32([p for p in self.features]).reshape(-1, 1, 2)  
 				feature_box = cv2.fitEllipse(self.feature_matrix)
 			else:
