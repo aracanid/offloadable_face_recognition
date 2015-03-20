@@ -59,7 +59,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		
 
 		self.face_detected = True
-		self.track_box
+		self.track_box = None
 
 		# Parameters for lucas kande optical flow
 		self.lk_params = dict( winSize  = (self.WIN_SIZE,self.WIN_SIZE),
