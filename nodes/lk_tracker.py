@@ -31,7 +31,7 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.USE_HARRIS = False
 		self.FLAGS = 0
 		self.MAX_LEVEL = 2
-		self.CV_FILLED = -1
+
 		self.BAD_CLUSTER = False
 		self.GOOD_CLUSTER = True
 		self.COLOUR_FACE_BOX = (0,0,255) # BLUE
@@ -94,7 +94,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			with self.offloading_lock:
 				self.face_box_sub.unregister()
 				self.face_detected = True
-		elif self.face_detected == True and (self.features==[] or self.track_box is None):
+		elif self.face_detected == True and (self.features==[] or self.track_box is None) or self.track_box == None:
 			with self.offloading_lock:
 				self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 				self.face_detected = False
@@ -128,7 +128,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			else:
 				feature_box = None
 
-			if (len(self.features) < self.min_features) and (self.track_box is not None) and (feature_box is not None):
+			if (len(self.features) < self.min_features) and (feature_box is not None):
 				self.expand_roi = self.expand_roi_init * self.expand_roi
 				((self.track_box.x, self.track_box.y), (self.track_box.width, self.track_box.height), a) = feature_box
 				self.track_box.width*=self.expand_roi
@@ -144,6 +144,10 @@ class LK_Tracker(Offloadable_FR_Node):
 				self.detect_box = None
 				self.track_box = None
 
+		if len(self.features) < self.abs_min_features:
+			self.detect_box = None
+			self.track_box = None			
+
 		self.prev_grey, self.grey = self.grey, self.prev_grey
 
 		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
@@ -153,9 +157,9 @@ class LK_Tracker(Offloadable_FR_Node):
 			if self.is_offloaded == False:
 				try:
 					if len(self.features) > self.abs_min_features:
-						print self.features 
-						print self.convert_to_feature_coordinates(self.features)
 						self.feature_coordinates_pub.publish(self.convert_to_feature_coordinates(self.features))
+					else:
+						self.feature_coordinates_pub.publish(self.convert_to_feature_coordinates([(0,0)]))
 				except OffloadingPublishError, e:
 					print "Could publish data for" + self.node_name + "\n" + "-----\n" + e
 
@@ -215,8 +219,10 @@ class LK_Tracker(Offloadable_FR_Node):
 					self.motor_commands_pub.unregister()
 					self.image_sub.unregister()
 				
-					if self.face_detected == False:
+					try:
 						self.face_box_sub.unregister()
+					except OffloadingError, e:
+						pass
 						
 		except OffloadingError, e:
 			print "Could not offload node " + self.node_name + "\n" + "-----\n" + e

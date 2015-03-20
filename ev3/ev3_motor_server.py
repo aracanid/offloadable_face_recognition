@@ -39,14 +39,14 @@ class Ev3_Motor_Server:
 		#self.servo_arm_pitch_motor=Motor(port=Motor.PORT.C)
 		#self.servo_arm_roll_motor=Motor(port=Motor.PORT.D)
 
-		self.camera_fov = 320
+		self.camera_fov = 640
 		self.camera_av = self.camera_fov/2
 		self.face_x = 0
 		self.face_y = 0
 
 
-		self.kp = 1					# Constant for the proportional controller
-		self.ki = 0 					# Constant for the integral controller
+		self.kp = 0.15625					# Constant for the proportional controller
+		self.ki = 0.6					# Constant for the integral controller
 		self.kd = 0 					# Constant for the differential controller
 		self.offset = self.camera_av 	# Offtset used to calculate error
 		self.tp = 0 					# Turning power of motors when there is no error
@@ -56,7 +56,7 @@ class Ev3_Motor_Server:
 		self.derivative = 0 
 
 		self.coordinates_time_recv = 0
-		self.timeout = 1 #seconds
+		self.timeout = 0.2 #seconds
 
 		self.face_coordinates_lock = threading.Lock()
 		self.system_on_lock = threading.Lock()
@@ -111,6 +111,7 @@ class Ev3_Motor_Server:
 		return self.system_on
 
 	def calculate_x_axis_pid(self):
+		print "time 1" + str(self.current_time())
 
 		face_x, face_y = self.get_face_coordinates()
 		dt = self.current_time() - self.previous_dt
@@ -127,6 +128,8 @@ class Ev3_Motor_Server:
 
 		self.previous_dt = dt
 		self.previous_err = error
+
+		print "time 2" + str(self.current_time())
 
 	def stop_x_axis_motors(self):
 		self.right_track_motor.stop()

@@ -87,7 +87,6 @@ class Face_Detector(Offloadable_FR_Node):
 		except OffloadingPublishError, e:
 			print "Could publish data for" + self.node_name + "\n" + "-----\n" + e
 
-
 		self.check_for_offload()
 
 	# Fuction to generate a list of face objects when given a classifier template
