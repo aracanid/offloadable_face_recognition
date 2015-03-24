@@ -10,8 +10,6 @@ import unittest
 import rospy
 import rostest
 
-	pass
-
 
 class TestLKTrackerPublish(unitttest.TestCase):
 

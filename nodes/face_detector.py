@@ -47,6 +47,11 @@ class Face_Detector(Offloadable_FR_Node):
 			
 		self.scheduler_sub = rospy.Subscriber(self.scheduler_commands, SchedulerCommand, self.scheduler_listener, queue_size=self.queue_size)
 
+	def set_classifiers(self, c1, c2, c3):
+		self.cascade_frontal_alt = c1
+		self.cascade_frontal_alt2 = c2
+		self.cascade_profile = c3
+
 	def detect_face(self, ros_image):
 
 		# Convert the ROS Image to Opencv format using the convert_img_to_cv() helper function
@@ -78,16 +83,7 @@ class Face_Detector(Offloadable_FR_Node):
 		# If we have found faces, generate a FaceBox message from them
 		face_box = self.generate_face_box(faces)
 
-		try:
-			with self.offloading_lock:
-				if self.is_offloaded == False and face_box is not None:
-					self.output_face_box_pub.publish(face_box)
-					print "face detected"
-			#self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
-		except OffloadingPublishError, e:
-			print "Could publish data for" + self.node_name + "\n" + "-----\n" + e
-
-		self.check_for_offload()
+		return face_box
 
 	# Fuction to generate a list of face objects when given a classifier template
 	def haar_detector(self, classifier):
@@ -113,6 +109,20 @@ class Face_Detector(Offloadable_FR_Node):
 				return face_box
 		return None
 
+	def publisher(self, ros_image):
+		face_box = self.detect_face(ros_image)
+
+		try:
+			with self.offloading_lock:
+				if self.is_offloaded == False and face_box is not None:
+					self.output_face_box_pub.publish(face_box)
+					print "face detected"
+			#self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
+		except OffloadingPublishError, e:
+			print "Could not publish data for" + self.node_name + "\n" + "-----\n" + e
+
+		self.check_for_offload()
+
 	# Abstract method implementations to allow scheduler commands to be processed
 	def unsubscribe_node(self):
 		try:
@@ -126,17 +136,13 @@ class Face_Detector(Offloadable_FR_Node):
 		except OffloadingError, e:
 			print "Could not offload node " + self.node_name + "\n" + "-----\n" + e
 
-
-
 	def resubscribe_node(self):
 		with self.offloading_lock:
 			# Function to resubscribe and republish the nodes data
 			self.output_face_box_pub = rospy.Publisher(self.face_box_coordinates, FaceBox, queue_size=self.queue_size)
 			#self.output_image_pub = rospy.Publisher(self.output_image, Image, queue_size=self.queue_size) 
 			#self.face_detect_output_image_pub = rospy.Publisher(self.face_detect_output_image, Image,queue_size=self.queue_size)
-			self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.detect_face, queue_size=self.queue_size)
-
-
+			self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.publisher, queue_size=self.queue_size)
 
 def main(args):
 	try:   

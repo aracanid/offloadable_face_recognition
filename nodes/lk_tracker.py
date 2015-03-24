@@ -153,18 +153,6 @@ class LK_Tracker(Offloadable_FR_Node):
 		cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2BGR)
 		ros_image = self.convert_cv_to_img(cv_image, encoding="bgr8")
 
-		with self.offloading_lock:
-			if self.is_offloaded == False:
-				try:
-					if len(self.features) > self.abs_min_features:
-						self.feature_coordinates_pub.publish(self.convert_to_feature_coordinates(self.features))
-					else:
-						self.feature_coordinates_pub.publish(self.convert_to_feature_coordinates([(0,0)]))
-				except OffloadingPublishError, e:
-					print "Could publish data for" + self.node_name + "\n" + "-----\n" + e
-
-		self.check_for_offload()
-
 	def prune_features(self, prev_features, abs_min_features):
 		# takes an array of feature coordinates and prunes them
 		# returning the new set of features and a quality score.
@@ -186,6 +174,21 @@ class LK_Tracker(Offloadable_FR_Node):
 				print("Service did not process request: " + str(exc))
 					# Add features if the number is getting too low
 
+	def publisher(self, ros_image):
+
+		self.track_lk(ros_image)
+
+		with self.offloading_lock:
+			if self.is_offloaded == False:
+				try:
+					if len(self.features) > self.abs_min_features:
+						self.feature_coordinates_pub.publish(self.convert_to_feature_coordinates(self.features))
+					else:
+						self.feature_coordinates_pub.publish(self.convert_to_feature_coordinates([(0,0)]))
+				except OffloadingPublishError, e:
+					print "Could not publish data for" + self.node_name + "\n" + "-----\n" + e
+
+		self.check_for_offload()
 			
 
 	def add_features(self, ros_image, face_box, prev_features):
@@ -234,7 +237,7 @@ class LK_Tracker(Offloadable_FR_Node):
 			self.feature_coordinates_pub = rospy.Publisher(self.feature_coordinates_output, CoordinatesList, queue_size=self.queue_size)
 			self.face_box_sub = rospy.Subscriber(self.face_box_coordinates, FaceBox, self.update_face_box, queue_size=self.queue_size)
 			self.motor_commands_pub = rospy.Publisher(self.motor_commands, MotorCommand, queue_size=self.queue_size)
-			self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.track_lk, queue_size = self.queue_size)
+			self.image_sub = rospy.Subscriber(self.pre_processed_output_image, Image, self.publisher, queue_size = self.queue_size)
 
 def main(args):
 	try:   

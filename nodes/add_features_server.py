@@ -84,12 +84,13 @@ class Add_Features_Server(Offloadable_FR_Node):
 		return min_distance
 
 	def unsubscribe_node(self):
-		# Function to unsubscribe a node from its topics and stop publishing data
+		# Unused
 		return 
 
 	def resubscribe_node(self):
-		# Function to resubscribe and republish the nodes data
+		# Unused
 		return
+
 def main():
 	try:
 		AF = Add_Features_Server("add_features_server")

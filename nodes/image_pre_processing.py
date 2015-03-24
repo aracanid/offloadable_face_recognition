@@ -8,7 +8,7 @@ import numpy as np
 
 import threading
 
-from  offloadable_fr_node import Offloadable_FR_Node
+from offloadable_fr_node import Offloadable_FR_Node
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from OffloadingError import OffloadingError, OffloadingPublishError
@@ -61,12 +61,17 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 		# Convert back to ROS Image from Opencv formatf
 		pre_processed_image = self.convert_cv_to_img(self.grey)
 
+		return pre_processed_image
+
+	def publisher(self, ros_image):
+		pre_processed_image = self.pre_processing(ros_image)
+
 		try:
 			with self.offloading_lock:
 				if self.is_offloaded == False:
 					self.pre_processed_image_pub.publish(pre_processed_image)
 		except OffloadingPublishError, e:
-			print "Could publish data for" + self.node_name + "\n" + "-----\n" + e
+			print "Could not publish data for" + self.node_name + "\n" + "-----\n" + e
 
 		self.check_for_offload()
 
@@ -84,7 +89,7 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 	def resubscribe_node(self):
 		# Function to resubscribe and republish the nodes data
 		with self.offloading_lock:
-			self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.pre_processing, queue_size=self.queue_size)
+			self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.publisher, queue_size=self.queue_size)
 			self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
 
 
