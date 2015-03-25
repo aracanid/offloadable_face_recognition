@@ -92,9 +92,6 @@ class Image_Pre_Processing(Offloadable_FR_Node):
 			self.image_sub = rospy.Subscriber(self.input_rgb_image, Image, self.publisher, queue_size=self.queue_size)
 			self.pre_processed_image_pub = rospy.Publisher(self.pre_processed_output_image, Image, queue_size=self.queue_size)
 
-
-
-
 def main(args):
 	try:   
 		PP = Image_Pre_Processing("pre_processing_node")

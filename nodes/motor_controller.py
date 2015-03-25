@@ -37,14 +37,11 @@ class Motor_Controller:
 		self.feature_coordinates = rospy.Subscriber(self.feature_coordinates_output, CoordinatesList, self.feature_coordinates_listener, queue_size=self.queue_size)
 
 	def feature_coordinates_listener(self, feature_coordinates):
-		print feature_coordinates
 		feature_coordinates = self.convert_to_tuple_array(feature_coordinates.coordinates)
 		x, y = self.get_features_center(feature_coordinates)
-		print x, y
 		values = (x, y)
 		packed_data = self.packer.pack(*values)
 		self.socket.sendall(packed_data)
-		print "sent"
 	
 	def initialise_connection(self, ip_addr):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

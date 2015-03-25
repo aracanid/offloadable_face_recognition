@@ -55,6 +55,8 @@ class Post_Processing(Offloadable_FR_Node):
 			if len(features) > 6: #self.abs_min_features:
 				for the_point in features:
 					cv2.circle(img, (int(the_point[0]), int(the_point[1])), 2, self.COLOUR_FEATURE_POINTS,self.CV_FILLED)
+
+			self.features = []
 			return img
 
 	def unsubscribe_node(self):

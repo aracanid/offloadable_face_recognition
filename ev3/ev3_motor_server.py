@@ -45,8 +45,8 @@ class Ev3_Motor_Server:
 		self.face_y = 0
 
 
-		self.kp = 0.15625					# Constant for the proportional controller
-		self.ki = 0.6					# Constant for the integral controller
+		self.kp = 0.15625				# Constant for the proportional controller
+		self.ki = 0						# Constant for the integral controller
 		self.kd = 0 					# Constant for the differential controller
 		self.offset = self.camera_av 	# Offtset used to calculate error
 		self.tp = 0 					# Turning power of motors when there is no error

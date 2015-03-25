@@ -27,9 +27,9 @@ class Scheduler:
 		self.offloading_command_sub = rospy.Subscriber(self.MANUAL_OFFLOAD_COMMANDS, OffloadCommand, self.offloading_command_listener, queue_size=self.queue_size)
 		self.scheduler_pub = rospy.Publisher(self.SCHEDULER_COMMANDS, SchedulerCommand, queue_size=self.queue_size)
 
-		self.LOW_CPU_USAGE_THRESHOLD = 25.0
-		self.MID_CPU_USAGE_THRESHOLD = 50.0
-		self.HIGH_CPU_USAGE_THRESHOLD = 75.0
+		self.LOW_CPU_USAGE_THRESHOLD = 60.0
+		self.MID_CPU_USAGE_THRESHOLD = 80.0
+		self.HIGH_CPU_USAGE_THRESHOLD = 90.0
 		self.UNSUBSCRIBE = True
 		self.SUBSCRIBE = False
 		self.cpu_count = 1
@@ -80,7 +80,7 @@ class Scheduler:
 
 	# Separate cpu_usage into another thread
 	def offloading_scheduler(self):
-		while self.get_system_on():
+		while not rospy.is_shutdown() and self.system_on:
 			try:
 				cpu_usage = self.get_cpu_usage()
 
@@ -102,34 +102,31 @@ class Scheduler:
 					self.offload_node(self.pc_pre_processing_node, self.SUBSCRIBE)
 					self.pp_offloaded = self.NODE_REMOTE
 
-				if cpu_usage < self.HIGH_CPU_USAGE_THRESHOLD and self.lk_offloaded:
+				if cpu_usage < 20 and self.lk_offloaded:
 					self.offload_node(self.pc_lk_tracker_node, self.UNSUBSCRIBE)
 					self.offload_node(self.rpi_lk_tracker_node, self.SUBSCRIBE)
 					self.lk_offloaded = self.NODE_LOCAL
 
-				if cpu_usage < self.MID_CPU_USAGE_THRESHOLD and self.fd_offloaded:
+				if cpu_usage < 10 and self.fd_offloaded:
 					self.offload_node(self.pc_face_detection_node, self.UNSUBSCRIBE)
 					self.offload_node(self.rpi_face_detection_node, self.SUBSCRIBE)
 					self.fd_offloaded = self.NODE_LOCAL
 
-				if cpu_usage < self.LOW_CPU_USAGE_THRESHOLD and self.pp_offloaded:
+				if cpu_usage < 50 and self.pp_offloaded:
 					self.offload_node(self.pc_pre_processing_node, self.UNSUBSCRIBE)
 					self.offload_node(self.rpi_pre_processing_node, self.SUBSCRIBE)
 					self.pp_offloaded = self.NODE_LOCAL
-					
-				#elif cpu_usage < self.LOW_CPU_USAGE_THRESHOLD:
 
-
-				####
-				# TODO: ADD WIFI SIGNAL STRENGTH CHECKER
-				###
+				###########################################
+				# TODO: ADD WIFI SIGNAL STRENGTH CHECKER  #
+				###########################################
 
 				# Fill the remainder of the frequency with a wait to prevent excessive spinning
 				self.rate.sleep()
 
 	  		except (KeyboardInterrupt, SystemExit):
-				print "Scheduler shutting down..."
 				self.set_system_on(False)
+				rospy.signal_shutdown("Shutting down scheduler")
 
 	def get_cpu_usage(self):
 		with self.offload_command_lock:
@@ -145,7 +142,6 @@ class Scheduler:
 				cpu_usage = cpu_usage_sum/self.cpu_count
 			else:
 				cpu_usage = ps.cpu_percent()
-				print str(cpu_usage)
 		else:
 			with self.offload_command_lock:
 				cpu_usage = self.percentage

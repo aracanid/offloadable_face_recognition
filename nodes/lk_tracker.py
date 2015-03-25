@@ -46,8 +46,8 @@ class LK_Tracker(Offloadable_FR_Node):
 		self.camera_x, self.camera_y = self.camera_dimensions
 		self.camera_edge_threshold = self.camera_x/100*self.camera_threshold_tolerance
 
-		self.abs_min_features = 6
-		self.min_features = 5
+		self.abs_min_features = 25
+		self.min_features = 50
 		self.NO_IMAGE_TEXT = "NO FACE DETECTED!"
 		self.face_box_lock = threading.Lock()
 		self.subscriber_lock = threading.Lock()
@@ -128,14 +128,15 @@ class LK_Tracker(Offloadable_FR_Node):
 			else:
 				feature_box = None
 
-			if (len(self.features) < self.min_features) and (feature_box is not None):
-				self.expand_roi = self.expand_roi_init * self.expand_roi
-				((self.track_box.x, self.track_box.y), (self.track_box.width, self.track_box.height), a) = feature_box
-				self.track_box.width*=self.expand_roi
-				self.track_box.height*=self.expand_roi
-				self.features = self.add_features(ros_image, self.track_box, self.features)
-			else:
-				self.expand_roi = self.expand_roi_init
+			if (feature_box is not None):
+				if (len(self.features) < self.min_features):
+					self.expand_roi = self.expand_roi_init * self.expand_roi
+					((self.track_box.x, self.track_box.y), (self.track_box.width, self.track_box.height), a) = feature_box
+					self.track_box.width*=self.expand_roi
+					self.track_box.height*=self.expand_roi
+					self.features = self.add_features(ros_image, self.track_box, self.features)
+				else:
+					self.expand_roi = self.expand_roi_init
 
 			self.features, score = self.prune_features(self.features, self.abs_min_features)
 
@@ -146,7 +147,8 @@ class LK_Tracker(Offloadable_FR_Node):
 
 		if len(self.features) < self.abs_min_features:
 			self.detect_box = None
-			self.track_box = None			
+			self.track_box = None
+			self.face_detected = True
 
 		self.prev_grey, self.grey = self.grey, self.prev_grey
 
@@ -196,8 +198,8 @@ class LK_Tracker(Offloadable_FR_Node):
 		# and adds new features to this. Should return the array of 
 		# new feature coordinates
 
-		self.min_features = int(len(self.features) * 0.9)
-		self.abs_min_features = int(0.5 * self.min_features)
+		# self.min_features = int(len(self.features) * 0.9)
+		# self.abs_min_features = int(0.5 * self.min_features)
 
 		rospy.wait_for_service('add_features')
 		add_features = rospy.ServiceProxy('add_features', AddFeatures)

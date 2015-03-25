@@ -1,0 +1,79 @@
+<launch>
+
+    <arg name="device" default="/dev/video0" />
+
+    <node name="usb_cam_node" pkg="usb_cam" type="usb_cam_node" output="screen">
+        <param name="device" value="$(arg device)" />
+        <param name="width" value="640" />
+        <param name="height" value="480" />
+        <param name="frame_rate" value="30" />
+        <param name="exposure" value="0" />
+    </node>
+
+  <node pkg="offloadable_face_recognition" name="rpi_pre_processing_node" type="image_pre_processing.py" output="screen">
+	<param name="node_name" value="rpi_pre_processing_node" />
+    <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
+
+  </node>
+
+  <node pkg="offloadable_face_recognition" name="rpi_lk_tracker_node" type="lk_tracker.py" output="screen">
+	<param name="node_name" value="lk_tracker" />
+    <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
+
+  </node>
+
+  <node pkg="offloadable_face_recognition" name="rpi_face_detection_node" type="face_detector.py" output="screen">
+	<param name="node_name" value="face_detector" />
+    <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
+
+    
+  	<param name="cascade_frontal_alt" value="$(find offloadable_face_recognition)/params/haarcascade_frontalface_alt.xml" />
+   	<param name="cascade_frontal_alt2" value="$(find offloadable_face_recognition)/params/haarcascade_frontalface_alt2.xml" />
+  	<param name="cascade_profile" value="$(find offloadable_face_recognition)/params/haarcascade_profileface.xml" />
+
+  </node>
+
+  <node pkg="offloadable_face_recognition" name="scheduler" type="scheduler.py" output="screen">
+	<param name="node_name" value="rpi_scheduler" />
+  </node>
+
+  <node pkg="offloadable_face_recognition" name="prune_features_server" type="prune_features_server.py" output="screen">
+	<param name="node_name" value="rpi_prune_features_server" />
+</node>
+
+  <node pkg="offloadable_face_recognition" name="add_features_server" type="add_features_server.py" output="screen">
+	<param name="node_name" value="rpi_add_features_server" />
+</node>
+
+  <node pkg="offloadable_face_recognition" name="image_output" type="image_output.py" output="screen">
+	<param name="node_name" value="rpi_image_output" />
+    <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
+</node>
+
+  <node pkg="offloadable_face_recognition" name="pc_pre_processing_node" type="image_pre_processing.py" output="screen">
+	<param name="node_name" value="pc_pre_processing_node" />
+    <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
+
+  </node>
+
+  <node pkg="offloadable_face_recognition" name="pc_lk_tracker_node" type="lk_tracker.py" output="screen">
+	<param name="node_name" value="pc_lk_tracker_node" />
+    <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
+
+  </node>
+
+  <node pkg="offloadable_face_recognition" name="pc_face_detection_node" type="face_detector.py" output="screen">
+	<param name="node_name" value="pc_face_detection_node" />
+    <remap from="input_rgb_image" to="/usb_cam_node/image_raw" />
+
+    
+  	<param name="cascade_frontal_alt" value="$(find offloadable_face_recognition)/params/haarcascade_frontalface_alt.xml" />
+   	<param name="cascade_frontal_alt2" value="$(find offloadable_face_recognition)/params/haarcascade_frontalface_alt2.xml" />
+  	<param name="cascade_profile" value="$(find offloadable_face_recognition)/params/haarcascade_profileface.xml" />
+
+  </node>
+
+<test test-name="test_face_detection_publish" pkg="mypkg" type="test_face_detection_publish.py" />
+
+
+</launch>

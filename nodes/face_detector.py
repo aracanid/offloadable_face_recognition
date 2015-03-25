@@ -94,7 +94,6 @@ class Face_Detector(Offloadable_FR_Node):
 		if len(faces) > 0:
 			for (x, y, w, h) in faces:
 				face_box = FaceBox()
-
 				# The input to cv.HaarDetectObjects was resized, so scale the bounding box of each face and convert it to two CvPoints 
 				pt1 = (int(x * self.IMAGE_SCALE), int(y * self.IMAGE_SCALE))
 				pt2 = (int((x + w) * self.IMAGE_SCALE), int((y + h) * self.IMAGE_SCALE))
@@ -116,7 +115,6 @@ class Face_Detector(Offloadable_FR_Node):
 			with self.offloading_lock:
 				if self.is_offloaded == False and face_box is not None:
 					self.output_face_box_pub.publish(face_box)
-					print "face detected"
 			#self.face_detect_output_image_pub.publish(self.convert_cv_to_img(cv_image))
 		except OffloadingPublishError, e:
 			print "Could not publish data for" + self.node_name + "\n" + "-----\n" + e
