@@ -1,5 +1,0 @@
-tuple[] prev_features
-FaceBox track_box
-sensor_msgs/Image ros_image
----
-tuple[] features
